@@ -1,38 +1,12 @@
-import {
-  BarChart3,
-  Bell,
-  LayoutDashboard,
-  ListChecks,
-  LogOut,
-  MapPin,
-  Megaphone,
-  Menu,
-  Settings,
-  Siren,
-  Tags,
-  Users,
-  X,
-} from 'lucide-react'
 import { useState } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router'
-import { logout, useAuth } from '../auth/useAuth'
-import { Button, Logo, Modal } from '../components/ui'
+import { NavLink, Outlet, useLocation } from 'react-router'
+import { logout } from '../auth/useAuth'
+import { Icon } from '../components/Icon'
+import { Button, IconButton, Logo, Modal } from '../components/ui'
 import { useActiveIncidents } from '../lib/activeIncidents'
 import { isEscalatedOpen } from '../lib/incidentLabels'
 import { LiveProviders } from './LiveProviders'
-
-const NAV = [
-  { section: 'Monitor' },
-  { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
-  { to: '/incidents', label: 'Incident Queue', icon: Siren, badge: 'pending' as const },
-  { to: '/alerts', label: 'Broadcast Alerts', icon: Megaphone },
-  { to: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { section: 'Manage' },
-  { to: '/users', label: 'Users', icon: Users },
-  { to: '/incident-types', label: 'Incident Types', icon: Tags },
-  { to: '/location-tags', label: 'Location Tags', icon: MapPin },
-  { to: '/settings', label: 'Settings', icon: Settings },
-]
+import { NAV } from './nav'
 
 export function DashboardLayout() {
   return (
@@ -43,153 +17,120 @@ export function DashboardLayout() {
 }
 
 function Shell() {
-  const [menuOpen, setMenuOpen] = useState(false)
-  const location = useLocation()
-  const [lastPath, setLastPath] = useState(location.pathname)
-  if (lastPath !== location.pathname) {
-    // Close the mobile menu after navigating.
-    setLastPath(location.pathname)
-    setMenuOpen(false)
-  }
-
   return (
-    <div className="min-h-screen lg:pl-64">
-      <aside
-        className={`no-print fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-line bg-white transition-transform lg:translate-x-0 ${menuOpen ? 'translate-x-0' : '-translate-x-full'}`}
-      >
-        <div className="flex h-16 items-center justify-between px-5">
-          <Logo />
-          <button className="rounded-lg p-1 text-muted lg:hidden" onClick={() => setMenuOpen(false)} aria-label="Close menu">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <SideNav />
-        <UserCard />
-      </aside>
-      {menuOpen && <div className="no-print fixed inset-0 z-30 bg-ink/30 lg:hidden" onClick={() => setMenuOpen(false)} />}
-
-      <TopBar onMenu={() => setMenuOpen(true)} />
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+    <div className="min-h-screen pb-[68px] lg:pb-0 lg:pl-[88px]">
+      <CampusAppBar />
+      <NavigationRail />
+      <main className="mx-auto max-w-6xl px-5 py-5 lg:px-8 lg:py-7">
         <Outlet />
       </main>
+      <BottomNavigation />
     </div>
   )
 }
 
-function SideNav() {
-  const { incidents } = useActiveIncidents()
-  const pending = incidents.filter((i) => i.status === 'Pending').length
+/** CampusAppBar with showActions: logo, then alerts, profile and log out. */
+function CampusAppBar() {
+  const { incidents, loading } = useActiveIncidents()
+  const [confirm, setConfirm] = useState(false)
+  const pendingHigh = incidents.filter((i) => i.status === 'Pending' && (i.priority === 'High' || isEscalatedOpen(i))).length
 
   return (
-    <nav className="flex-1 overflow-y-auto px-3 pb-4">
-      {NAV.map((item, i) =>
-        'section' in item ? (
-          <p key={i} className="px-3 pt-5 pb-2 text-[11px] font-bold tracking-wider text-muted uppercase">
-            {item.section}
-          </p>
-        ) : (
-          <NavLink
-            key={item.to}
-            to={item.to!}
-            end={item.end}
-            className={({ isActive }) =>
-              `mb-0.5 flex items-center gap-3 rounded-control px-3 py-2.5 text-sm font-medium transition ${
-                isActive ? 'bg-soft-blue font-bold text-navy' : 'text-ink hover:bg-background'
-              }`
-            }
-          >
-            {({ isActive }) => {
-              const Icon = item.icon!
-              return (
-                <>
-                  <Icon className={`h-[18px] w-[18px] ${isActive ? 'text-blue' : 'text-muted'}`} />
-                  <span className="flex-1">{item.label}</span>
-                  {item.badge === 'pending' && pending > 0 && (
-                    <span className="rounded-full bg-danger px-2 py-0.5 text-[11px] font-bold text-white">{pending}</span>
-                  )}
-                </>
-              )
-            }}
-          </NavLink>
-        ),
-      )}
+    <header className="no-print sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-line bg-background/95 px-4 backdrop-blur lg:-ml-[88px] lg:pl-6">
+      <Logo subtitle="Security Office" />
+      <div className="ml-4 hidden items-center gap-2 text-xs font-medium text-muted sm:flex">
+        <span className={`h-2 w-2 rounded-full ${loading ? 'bg-muted' : 'bg-success'}`} />
+        {loading ? 'Connecting…' : 'Live monitoring'}
+      </div>
+      <div className="flex-1" />
+      <IconButton icon="notifications" label={`${pendingHigh} high priority reports waiting`} to="/incidents?view=pending" badge={pendingHigh} />
+      <IconButton icon="person" label="Profile" to="/profile" />
+      <IconButton icon="logout" label="Log out" onClick={() => setConfirm(true)} />
+      <LogoutDialog open={confirm} onClose={() => setConfirm(false)} />
+    </header>
+  )
+}
+
+/** Same dialog as CampusAppBar.showLogout in the app. */
+export function LogoutDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <Modal
+      open={open}
+      title="Log out"
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="text" onClick={onClose}>Cancel</Button>
+          <Button variant="filled" onClick={() => void logout()}>Confirm</Button>
+        </>
+      }
+    >
+      <p className="text-muted">Are you sure you want to log out?</p>
+    </Modal>
+  )
+}
+
+function usePendingCount() {
+  const { incidents } = useActiveIncidents()
+  return incidents.filter((i) => i.status === 'Pending').length
+}
+
+function Badge({ count }: { count: number }) {
+  if (count <= 0) return null
+  return <span className="absolute -top-1 left-1/2 ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white">{count}</span>
+}
+
+/** Material 3 NavigationRail: white, soft-blue pill indicator, filled icon when selected. */
+function NavigationRail() {
+  const pending = usePendingCount()
+  return (
+    <nav className="no-print fixed top-16 bottom-0 left-0 z-20 hidden w-[88px] flex-col items-center gap-1 overflow-y-auto border-r border-line bg-white py-4 lg:flex" aria-label="Main">
+      {NAV.map((item) => (
+        <NavLink key={item.to} to={item.to} end={item.end} className="group flex w-full flex-col items-center gap-1 py-1">
+          {({ isActive }) => (
+            <>
+              <span className={`relative flex h-8 w-14 items-center justify-center rounded-2xl transition ${isActive ? 'bg-soft-blue' : 'group-hover:bg-ink/5'}`}>
+                <Icon name={item.icon} filled={isActive} className={isActive ? 'text-navy' : 'text-muted'} />
+                {item.badge && <Badge count={pending} />}
+              </span>
+              <span className={`text-xs font-semibold ${isActive ? 'text-ink' : 'text-muted'}`}>{item.label}</span>
+            </>
+          )}
+        </NavLink>
+      ))}
     </nav>
   )
 }
 
-function UserCard() {
-  const { user, profile } = useAuth()
-  const [confirm, setConfirm] = useState(false)
-  const name = profile?.name ?? 'Security Office'
-  const initials = name
-    .split(' ')
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase()
+const MORE_PATHS = ['/more', '/profile', ...NAV.filter((n) => !n.primary).map((n) => n.to)]
+
+/** CampusBottomNavigation: white NavigationBar, height 68, soft-blue indicator. */
+function BottomNavigation() {
+  const pending = usePendingCount()
+  const { pathname } = useLocation()
+  const items = [...NAV.filter((n) => n.primary), { to: '/more', label: 'More', icon: 'menu', end: false, badge: false }]
 
   return (
-    <div className="border-t border-line p-4">
-      <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-navy text-sm font-bold text-white">{initials}</span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold">{name}</p>
-          <p className="truncate text-xs text-muted">{user?.email}</p>
-        </div>
-        <button onClick={() => setConfirm(true)} className="rounded-lg p-2 text-muted hover:bg-background hover:text-ink" aria-label="Log out" title="Log out">
-          <LogOut className="h-[18px] w-[18px]" />
-        </button>
-      </div>
-      <Modal
-        open={confirm}
-        title="Log out"
-        onClose={() => setConfirm(false)}
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setConfirm(false)}>Cancel</Button>
-            <Button onClick={() => void logout()}>Confirm</Button>
-          </>
-        }
-      >
-        <p className="text-sm">Are you sure you want to log out? You will stop receiving live incident alerts on this computer.</p>
-      </Modal>
-    </div>
-  )
-}
-
-function TopBar({ onMenu }: { onMenu: () => void }) {
-  const { incidents, loading } = useActiveIncidents()
-  const escalated = incidents.filter(isEscalatedOpen).length
-  const high = incidents.filter((i) => i.priority === 'High' && i.status === 'Pending').length
-
-  return (
-    <header className="no-print sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-line bg-background/90 px-4 backdrop-blur sm:px-6 lg:px-8">
-      <button className="rounded-lg p-2 text-ink lg:hidden" onClick={onMenu} aria-label="Open menu">
-        <Menu className="h-5 w-5" />
-      </button>
-      <div className="lg:hidden">
-        <Logo compact />
-      </div>
-      <div className="flex items-center gap-2 text-sm">
-        <span className="relative flex h-2.5 w-2.5">
-          {!loading && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60" />}
-          <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${loading ? 'bg-muted' : 'bg-success'}`} />
-        </span>
-        <span className="hidden font-medium text-muted sm:inline">{loading ? 'Connecting…' : 'Live monitoring'}</span>
-      </div>
-      <div className="flex-1" />
-      {escalated > 0 && (
-        <Link to="/incidents?view=escalated" className="flex items-center gap-1.5 rounded-full bg-danger px-3 py-1.5 text-xs font-bold text-white">
-          <Bell className="h-3.5 w-3.5" /> {escalated} escalated
-        </Link>
-      )}
-      <Link
-        to="/incidents"
-        className="flex items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1.5 text-xs font-bold hover:bg-soft-blue"
-      >
-        <ListChecks className="h-3.5 w-3.5 text-blue" />
-        <span>{high} high priority pending</span>
-      </Link>
-    </header>
+    <nav className="no-print fixed right-0 bottom-0 left-0 z-30 flex h-[68px] border-t border-line bg-white lg:hidden" aria-label="Main">
+      {items.map((item) => {
+        const forceActive = item.to === '/more' && MORE_PATHS.some((p) => pathname.startsWith(p))
+        return (
+          <NavLink key={item.to} to={item.to} end={item.end} className="flex flex-1 flex-col items-center justify-center gap-1">
+            {({ isActive }) => {
+              const active = isActive || forceActive
+              return (
+                <>
+                  <span className={`relative flex h-8 w-16 items-center justify-center rounded-2xl ${active ? 'bg-soft-blue' : ''}`}>
+                    <Icon name={item.icon} filled={active} className={active ? 'text-navy' : 'text-muted'} />
+                    {item.badge && <Badge count={pending} />}
+                  </span>
+                  <span className={`text-xs font-semibold ${active ? 'text-ink' : 'text-muted'}`}>{item.label}</span>
+                </>
+              )
+            }}
+          </NavLink>
+        )
+      })}
+    </nav>
   )
 }

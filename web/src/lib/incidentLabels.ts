@@ -1,5 +1,5 @@
 import type { RefData } from './refData'
-import type { Incident, Priority } from './types'
+import type { AlertSeverity, Incident, Priority } from './types'
 
 export const PRIORITY_RANK: Record<Priority, number> = { High: 0, Medium: 1, Low: 2 }
 
@@ -28,4 +28,11 @@ export function compareQueue(a: Incident, b: Incident): number {
   const pb = b.priority ? PRIORITY_RANK[b.priority] : 1
   if (pa !== pb) return pa - pb
   return (a.createdAt?.toMillis() ?? Date.now()) - (b.createdAt?.toMillis() ?? Date.now())
+}
+
+const SEVERITY_NAMES: Record<AlertSeverity, string> = { Emergency: 'Critical', Warning: 'Warning', Info: 'Information' }
+
+/** The app's alert severity names (Critical / Warning / Information). */
+export function severityName(severity: AlertSeverity): string {
+  return SEVERITY_NAMES[severity]
 }

@@ -1,5 +1,4 @@
 import { addDoc, collection, deleteDoc, doc, setDoc } from 'firebase/firestore'
-import { MapPin, Pencil, Plus, Printer, QrCode, Trash2 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { useState, type FormEvent } from 'react'
 import { Banner, Button, Card, EmptyState, Field, Input, Modal, PageHeader, Spinner } from '../components/ui'
@@ -30,26 +29,26 @@ export function LocationTagsPage() {
   return (
     <div>
       <PageHeader
-        title="Location Tags"
+        title="QR location tags"
         subtitle="QR codes posted around campus. Students scan them to report an exact indoor location."
         actions={
           <>
-            <Button variant="secondary" icon={Printer} disabled={tags.length === 0} onClick={() => setPrinting(selected.size ? tags.filter((t) => selected.has(t.id)) : tags)}>
+            <Button variant="outlined" icon="print" disabled={tags.length === 0} onClick={() => setPrinting(selected.size ? tags.filter((t) => selected.has(t.id)) : tags)}>
               Print {selected.size ? `${selected.size} selected` : 'all'}
             </Button>
-            <Button icon={Plus} onClick={() => setEditing({ id: null, data: EMPTY })}>Add tag</Button>
+            <Button icon="add" onClick={() => setEditing({ id: null, data: EMPTY })}>Add tag</Button>
           </>
         }
       />
 
-      <div className="mb-5">
-        <Banner icon={QrCode} title="QR-based campus location tagging" body="GPS is often inaccurate indoors. A scanned tag gives security the building, floor and exact spot of the report." />
+      <div className="mb-[18px]">
+        <Banner icon="qr_code_2" title="QR-based campus location tagging" body="GPS is often inaccurate indoors. A scanned tag gives security the building, floor and exact spot of the report." />
       </div>
 
       {loading ? (
         <Spinner />
       ) : tags.length === 0 ? (
-        <Card><EmptyState icon={MapPin} title="No location tags yet" body="Add the buildings and rooms where QR codes will be posted." /></Card>
+        <Card><EmptyState icon="location_on" title="No location tags yet" body="Add the buildings and rooms where QR codes will be posted." /></Card>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {tags.map((t) => (
@@ -61,17 +60,17 @@ export function LocationTagsPage() {
                 <div className="min-w-0 flex-1">
                   <p className="font-bold">{t.name}</p>
                   <p className="text-sm text-muted">{t.building} · Floor {t.floor}</p>
-                  <a href={googleMapsUrl(t)} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-blue hover:underline">
+                  <a href={googleMapsUrl(t)} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-navy hover:underline">
                     {t.lat.toFixed(5)}, {t.lng.toFixed(5)}
                   </a>
                   <label className="mt-2 flex items-center gap-2 text-xs text-muted">
-                    <input type="checkbox" checked={selected.has(t.id)} onChange={() => toggle(t.id)} className="accent-navy" /> Select for printing
+                    <input type="checkbox" checked={selected.has(t.id)} onChange={() => toggle(t.id)} className="h-4 w-4 accent-navy" /> Select for printing
                   </label>
                 </div>
                 <Button
-                  variant="ghost"
+                  variant="text"
                   size="sm"
-                  icon={Pencil}
+                  icon="edit"
                   aria-label={`Edit ${t.name}`}
                   onClick={() => setEditing({ id: t.id, data: { name: t.name, building: t.building, floor: t.floor, lat: String(t.lat), lng: String(t.lng) } })}
                 />
@@ -140,9 +139,9 @@ function TagForm({ initial, onClose }: { initial: { id: string | null; data: For
       onClose={onClose}
       footer={
         <>
-          {initial.id && <Button variant="ghost" icon={Trash2} className="mr-auto !text-danger" onClick={remove}>Delete</Button>}
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="submit" form="tag-form" loading={saving} disabled={!data.name.trim() || !data.building.trim() || !coordsValid}>Save</Button>
+          {initial.id && <Button variant="text" icon="delete" className="mr-auto !text-danger" onClick={remove}>Delete</Button>}
+          <Button variant="text" onClick={onClose}>Cancel</Button>
+          <Button variant="filled" type="submit" form="tag-form" loading={saving} disabled={!data.name.trim() || !data.building.trim() || !coordsValid}>Save</Button>
         </>
       }
     >
@@ -166,7 +165,7 @@ function TagForm({ initial, onClose }: { initial: { id: string | null; data: For
             <Input value={data.lng} onChange={set('lng')} inputMode="decimal" placeholder="121.61…" required />
           </Field>
         </div>
-        <Button type="button" variant="secondary" icon={MapPin} onClick={useMyLocation} className="w-full">
+        <Button type="button" variant="outlined" icon="my_location" onClick={useMyLocation} className="w-full">
           Use this device's current location
         </Button>
       </form>
@@ -180,14 +179,14 @@ function PrintSheet({ tags, onClose }: { tags: WithId<LocationTag>[]; onClose: (
       <div className="no-print sticky top-0 flex items-center justify-between border-b border-line bg-white px-6 py-4">
         <p className="font-bold">Print preview · {tags.length} tag{tags.length > 1 ? 's' : ''}</p>
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={onClose}>Close</Button>
-          <Button icon={Printer} onClick={() => window.print()}>Print</Button>
+          <Button variant="text" onClick={onClose}>Close</Button>
+          <Button variant="filled" icon="print" onClick={() => window.print()}>Print</Button>
         </div>
       </div>
       <div className="mx-auto grid max-w-4xl grid-cols-2 gap-6 p-8 print:p-0">
         {tags.map((t) => (
           <div key={t.id} className="flex break-inside-avoid flex-col items-center rounded-card border-2 border-navy p-6 text-center">
-            <p className="text-sm font-extrabold tracking-wide text-navy uppercase">CampusSafe</p>
+            <p className="flex items-center gap-1.5 text-lg font-extrabold text-navy"><span className="mi" style={{ fontSize: 22 }}>shield</span>CampusSafe</p>
             <p className="text-xs text-muted">Scan to report an incident here</p>
             <div className="my-4">
               <QRCodeSVG value={qrPayload(t.id)} size={180} fgColor="#16315F" level="M" />

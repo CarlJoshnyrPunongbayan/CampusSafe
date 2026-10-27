@@ -1,40 +1,34 @@
-import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react'
 import { Link } from 'react-router'
+import { Icon } from '../components/Icon'
 import type { Toast } from '../lib/toast'
 
-const styles = {
-  info: { icon: Info, className: 'border-line bg-white', iconClass: 'text-blue' },
-  success: { icon: CheckCircle2, className: 'border-line bg-white', iconClass: 'text-success' },
-  error: { icon: XCircle, className: 'border-danger/30 bg-white', iconClass: 'text-danger' },
-  urgent: { icon: AlertTriangle, className: 'border-danger bg-danger text-white', iconClass: 'text-white' },
-}
-
+/**
+ * Material SnackBars, as the app uses for feedback. Urgent incident alerts use the danger
+ * color so they stand out.
+ */
 export function Toaster({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: number) => void }) {
   return (
-    <div className="pointer-events-none fixed right-4 bottom-4 left-4 z-[60] flex flex-col items-end gap-2 sm:left-auto" aria-live="assertive">
+    <div className="pointer-events-none fixed right-0 bottom-[84px] left-0 z-[60] flex flex-col items-center gap-2 px-4 lg:bottom-6 lg:left-[88px]" aria-live="assertive">
       {toasts.map((t) => {
-        const s = styles[t.tone]
-        const Icon = s.icon
-        const content = (
-          <>
-            <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${s.iconClass}`} />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold">{t.title}</p>
-              {t.body && <p className={`mt-0.5 text-xs ${t.tone === 'urgent' ? 'text-white/85' : 'text-muted'}`}>{t.body}</p>}
-            </div>
-          </>
-        )
+        const urgent = t.tone === 'urgent'
+        const icon = urgent ? 'warning' : t.tone === 'error' ? 'error_outline' : t.tone === 'success' ? 'check_circle' : 'info'
         return (
-          <div key={t.id} className={`pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-card border p-4 shadow-lg ${s.className}`}>
-            {t.href ? (
-              <Link to={t.href} onClick={() => onDismiss(t.id)} className="flex min-w-0 flex-1 items-start gap-3">
-                {content}
+          <div
+            key={t.id}
+            className={`pointer-events-auto flex w-full max-w-xl items-center gap-3 rounded-[4px] px-4 py-3 text-white shadow-lg ${urgent ? 'bg-danger' : 'bg-snackbar'}`}
+          >
+            <Icon name={icon} size={20} className={urgent ? 'text-white' : t.tone === 'error' ? 'text-[#ffb4ab]' : 'text-[#b1c5ff]'} />
+            <div className="min-w-0 flex-1 text-sm">
+              <p className={urgent ? 'font-bold' : ''}>{t.title}</p>
+              {t.body && <p className="text-white/80">{t.body}</p>}
+            </div>
+            {t.href && (
+              <Link to={t.href} onClick={() => onDismiss(t.id)} className={`rounded-full px-3 py-1.5 text-sm font-medium ${urgent ? 'text-white hover:bg-white/15' : 'text-[#b1c5ff] hover:bg-white/10'}`}>
+                Open
               </Link>
-            ) : (
-              content
             )}
-            <button onClick={() => onDismiss(t.id)} aria-label="Dismiss" className="opacity-70 hover:opacity-100">
-              <X className="h-4 w-4" />
+            <button onClick={() => onDismiss(t.id)} aria-label="Dismiss" className="rounded-full p-1 text-white/80 hover:bg-white/10">
+              <Icon name="close" size={18} />
             </button>
           </div>
         )

@@ -1,17 +1,16 @@
-import { collection, limit, orderBy, query, where, Timestamp } from 'firebase/firestore'
-import { AlertTriangle, CheckCircle2, Clock, Megaphone, ShieldCheck, Siren, Timer } from 'lucide-react'
+import { collection, limit, orderBy, query, Timestamp, where } from 'firebase/firestore'
 import { useMemo } from 'react'
-import { Link } from 'react-router'
 import { useAuth } from '../auth/useAuth'
-import { SeverityBadge } from '../components/badges'
-import { Banner, Card, CardHeader, EmptyState, IconTile, PageHeader, Spinner, StatCard } from '../components/ui'
+import { AlertCard } from '../components/AlertCard'
+import { IncidentCard } from '../components/IncidentCard'
+import { Banner, Card, EmptyState, FeatureCard, InfoCard, SectionHeader, Spinner } from '../components/ui'
 import { useActiveIncidents } from '../lib/activeIncidents'
 import { db } from '../lib/firebase'
 import { average, durationBetween, formatDuration, timeAgo } from '../lib/format'
 import { useCollection, useNow } from '../lib/hooks'
 import { compareQueue, isEscalatedOpen } from '../lib/incidentLabels'
+import { userName, useRefData } from '../lib/refData'
 import type { Alert, Incident } from '../lib/types'
-import { IncidentRow } from './IncidentQueuePage'
 
 function startOfToday() {
   const d = new Date()
@@ -19,97 +18,85 @@ function startOfToday() {
   return Timestamp.fromDate(d)
 }
 
+/** Laid out like the app's HomeScreen: greeting, soft-blue banner, 2×2 feature cards, recent reports. */
 export function OverviewPage() {
   const { profile } = useAuth()
+  const ref = useRefData()
   const now = useNow()
   const { incidents: active, loading } = useActiveIncidents()
 
   const todayQ = useMemo(() => query(collection(db, 'incidents'), where('createdAt', '>=', startOfToday())), [])
   const today = useCollection<Incident>(todayQ)
-  const alertsQ = useMemo(() => query(collection(db, 'alerts'), orderBy('sentAt', 'desc'), limit(4)), [])
+  const alertsQ = useMemo(() => query(collection(db, 'alerts'), orderBy('sentAt', 'desc'), limit(3)), [])
   const alerts = useCollection<Alert>(alertsQ)
 
   const pending = active.filter((i) => i.status === 'Pending')
-  const highPending = pending.filter((i) => i.priority === 'High')
+  const urgent = pending.filter((i) => i.isSOS || i.priority === 'High')
   const escalated = active.filter(isEscalatedOpen)
-  const resolvedToday = today.data.filter((i) => i.status === 'Resolved').length
   const avgAck = average(today.data.map((i) => durationBetween(i.createdAt, i.acknowledgedAt)))
-  const queue = [...active].sort(compareQueue).slice(0, 6)
-
-  const firstName = profile?.name?.split(' ')[0]
+  const queue = [...active].sort(compareQueue).slice(0, 5)
+  const firstName = profile?.name?.split(' ')[0] ?? 'Officer'
+  const count = (n: number) => (loading ? '…' : n)
 
   return (
     <div>
-      <PageHeader title={`Welcome back${firstName ? `, ${firstName}` : ''}`} subtitle="Here is what is happening on campus right now." />
+      <h1 className="text-[28px] leading-[1.15] font-bold tracking-[-0.5px]">Welcome back, {firstName}</h1>
+      <p className="mt-[5px] text-muted">Here is what is happening on campus right now.</p>
 
-      <div className="mb-6">
+      <div className="mt-[18px]">
         {escalated.length > 0 ? (
           <Banner
             tone="danger"
-            icon={AlertTriangle}
-            title={`${escalated.length} escalated report${escalated.length > 1 ? 's' : ''} need${escalated.length > 1 ? '' : 's'} acknowledgement`}
-            body="High-priority reports that were not acknowledged in time."
-            action={<Link to="/incidents?view=escalated" className="rounded-control bg-danger px-3 py-2 text-sm font-bold text-white">Review</Link>}
+            icon="warning_amber"
+            title={`${escalated.length} escalated report${escalated.length > 1 ? 's' : ''} not yet acknowledged`}
+            body="High-priority reports waiting longer than the escalation time. Open them now."
           />
         ) : (
-          <Banner icon={ShieldCheck} title="Campus safety is connected" body="Live monitoring is on. New reports and SOS requests will alert you instantly." />
+          <Banner icon="verified_user" title="Campus safety is connected" body="Live monitoring is on. New reports and SOS requests alert you instantly." />
         )}
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard icon={Siren} tone="danger" label="Pending reports" value={loading ? '…' : pending.length} hint={`${highPending.length} high priority`} />
-        <StatCard icon={Clock} tone="warning" label="Responding" value={loading ? '…' : active.length - pending.length} hint="Responder on the way" />
-        <StatCard icon={CheckCircle2} tone="success" label="Resolved today" value={today.loading ? '…' : resolvedToday} hint={`${today.data.length} reported today`} />
-        <StatCard icon={Timer} tone="blue" label="Avg. time to acknowledge" value={today.loading ? '…' : formatDuration(avgAck)} hint="Reports received today" />
+      <div className="mt-[18px] grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <FeatureCard to="/incidents?view=pending" icon="report" tone="blue" title="Pending reports" subtitle="Waiting for acknowledgement" value={count(pending.length)} />
+        <FeatureCard to="/incidents?view=pending" icon="sos" tone="danger" title="SOS / high priority" subtitle="Urgent reports waiting now" value={count(urgent.length)} />
+        <FeatureCard to="/alerts" icon="notifications_active" tone="warning" title="Broadcast alert" subtitle="Send a campus-wide update" />
+        <FeatureCard to="/map" icon="map" tone="success" title="Campus map" subtitle="Where active incidents are" />
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-3">
-        <Card className="overflow-hidden lg:col-span-2">
-          <CardHeader
-            title="Needs attention"
-            subtitle="Active reports in queue order"
-            action={<Link to="/incidents" className="text-sm font-bold text-blue hover:underline">View all</Link>}
-          />
+      <div className="mt-[26px] grid gap-6 lg:grid-cols-3">
+        <section className="min-w-0 lg:col-span-2">
+          <SectionHeader title="Needs attention" action="View all" to="/incidents" />
           {loading ? (
             <Spinner />
           ) : queue.length === 0 ? (
-            <EmptyState icon={ShieldCheck} title="No active incidents" body="All reports have been resolved." />
+            <Card><EmptyState icon="verified_user" title="No active incidents" body="All reports have been resolved." /></Card>
           ) : (
-            <ul className="divide-y divide-line">
-              {queue.map((i) => (
-                <IncidentRow key={i.id} incident={i} now={now} compact />
-              ))}
-            </ul>
+            queue.map((i) => <IncidentCard key={i.id} incident={i} now={now} />)
           )}
-        </Card>
+        </section>
 
-        <Card>
-          <CardHeader
-            title="Recent alerts"
-            action={<Link to="/alerts" className="text-sm font-bold text-blue hover:underline">Broadcast</Link>}
+        <section className="min-w-0">
+          <SectionHeader title="Today" />
+          <InfoCard
+            title="Response summary"
+            rows={[
+              ['Reports received', today.loading ? '…' : today.data.length],
+              ['Resolved', today.loading ? '…' : today.data.filter((i) => i.status === 'Resolved').length],
+              ['Responding now', count(active.length - pending.length)],
+              ['Avg. time to acknowledge', today.loading ? '…' : formatDuration(avgAck)],
+            ]}
           />
-          {alerts.loading ? (
-            <Spinner />
-          ) : alerts.data.length === 0 ? (
-            <EmptyState icon={Megaphone} title="No alerts sent yet" />
-          ) : (
-            <ul className="divide-y divide-line">
-              {alerts.data.map((a) => (
-                <li key={a.id} className="flex gap-3 px-5 py-4">
-                  <IconTile icon={Megaphone} size="sm" tone={a.severity === 'Emergency' ? 'danger' : a.severity === 'Warning' ? 'warning' : 'blue'} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="truncate font-bold">{a.title}</p>
-                      <SeverityBadge severity={a.severity} />
-                    </div>
-                    <p className="line-clamp-2 text-sm text-muted">{a.body}</p>
-                    <p className="mt-1 text-xs text-muted">{timeAgo(a.sentAt, now)}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
+          <div className="mt-[26px]">
+            <SectionHeader title="Recent alerts" action="View all" to="/alerts" />
+            {alerts.loading ? (
+              <Spinner />
+            ) : alerts.data.length === 0 ? (
+              <Card><EmptyState icon="notifications" title="No alerts sent yet" /></Card>
+            ) : (
+              alerts.data.map((a) => <AlertCard key={a.id} title={a.title} meta={`${userName(ref.users, a.sentBy)} • ${timeAgo(a.sentAt, now)}`} severity={a.severity} />)
+            )}
+          </div>
+        </section>
       </div>
     </div>
   )

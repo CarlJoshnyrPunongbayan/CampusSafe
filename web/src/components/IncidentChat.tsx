@@ -1,5 +1,4 @@
 import { addDoc, collection, orderBy, query, serverTimestamp } from 'firebase/firestore'
-import { MessageSquare, Send } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/useAuth'
 import { db } from '../lib/firebase'
@@ -43,10 +42,10 @@ export function IncidentChat({ incidentId, disabled }: { incidentId: string; dis
 
   return (
     <Card>
-      <CardHeader title="Chat with reporter" subtitle="Messages appear in the reporter's CampusSafe app" />
+      <CardHeader title="Chat" subtitle="Messages appear in the reporter's CampusSafe app" />
       <div ref={listRef} className="max-h-80 min-h-40 space-y-3 overflow-y-auto px-5 py-4">
         {messages.length === 0 ? (
-          <EmptyState icon={MessageSquare} title="No messages yet" body="Ask for details or give safety instructions." />
+          <EmptyState icon="chat" title="No messages yet" body="Ask for details or give safety instructions." />
         ) : (
           messages.map((m) => {
             const mine = m.senderId === user?.uid
@@ -58,7 +57,7 @@ export function IncidentChat({ incidentId, disabled }: { incidentId: string; dis
                   {sender && !mine && <RoleBadge role={sender.role} />}
                   <span>{formatDateTime(m.sentAt)}</span>
                 </div>
-                <p className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap ${mine ? 'rounded-br-md bg-navy text-white' : 'rounded-bl-md bg-background'}`}>
+                <p className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap ${mine ? 'rounded-br-md bg-navy text-white' : 'rounded-bl-md bg-soft-blue'}`}>
                   {m.text}
                 </p>
               </div>
@@ -75,7 +74,7 @@ export function IncidentChat({ incidentId, disabled }: { incidentId: string; dis
           disabled={disabled}
           aria-label="Message"
         />
-        <Button type="submit" icon={Send} loading={sending} disabled={disabled || !text.trim()} aria-label="Send">
+        <Button type="submit" variant="filled" icon="send" loading={sending} disabled={disabled || !text.trim()} aria-label="Send">
           <span className="hidden sm:inline">Send</span>
         </Button>
       </form>

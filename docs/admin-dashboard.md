@@ -1,20 +1,34 @@
 # Admin Web Dashboard and Backend
 
-The security office's web dashboard (`web/`) and the Firebase backend (`functions/`, `firestore.rules`) built from the revision matrix (CCMS-IT-WMA-2026-006). The look follows the CampusSafe mobile app (`Pansit10/CampusSafe_User`): the same color tokens from `app_colors.dart`, 16 px bordered cards, 13 px rounded controls, tinted status chips and the shield logo tile.
+The security office's web dashboard (`web/`) and the Firebase backend (`functions/`, `firestore.rules`) built from the revision matrix (CCMS-IT-WMA-2026-006). The design is taken from the CampusSafe mobile app (`Pansit10/CampusSafe_User`) so the two look like one product:
+
+| App (Flutter) | Dashboard (web) |
+|---|---|
+| `app_colors.dart`, `app_theme.dart` (Material 3, seed `#356CC8`, primary navy) | Same color tokens in `web/src/index.css` |
+| Roboto, Material Icons (outlined; filled when selected) | Same fonts, bundled locally (`@fontsource`) |
+| `CampusAppBar` (shield tile + "CampusSafe", alerts / profile / log out icons) | Top app bar |
+| `CampusBottomNavigation` (white NavigationBar, soft-blue pill) | Same bar on phones; Material navigation rail on wider screens |
+| `IncidentCard`, `AlertCard`, `FeatureCard`, `StatusChip`, `SectionHeader`, `PrimaryButton`, `AppTextField`, `_InfoCard` | React versions in `web/src/components` |
+| `ChoiceChip` filters, `AlertDialog`, `SnackBar` | Same patterns for filters, confirmations and feedback |
+| Home, Campus alerts, Campus map, Profile, Login and Splash screens | Home, Campus alerts, Campus map, Profile, Login and loading screen |
+
+StatusChip colors follow the app: `Pending` uses the amber "Under Review" color, `Responding` blue, `Resolved` green; alert severities use the app's names (Critical / Warning / Information).
 
 ## Pages
 
 | Page | What it does | Paper requirement |
 |---|---|---|
 | **Login** | Admin-only sign in, remember me, password reset | Role-based access (Section 4.1.2) |
-| **Overview** | Live KPIs (pending, responding, resolved today, avg. time to acknowledge), escalation banner, the "needs attention" queue, recent alerts | Centralized security dashboard (Significance, item 10) |
-| **Incident Queue** | Real-time list of reports; tabs Active / Pending / Responding / Escalated / Resolved / All; search; priority and type filters. Order: escalated, then unhandled, then priority, then longest waiting | Workflow step 3, dashboard notified (item 8) |
+| **Home** | Like the app's home: greeting, safety banner (red when reports are escalated), feature cards with live counts, "needs attention" reports, today's response summary, recent alerts | Centralized security dashboard (Significance, item 10) |
+| **Incident reports** | Real-time incident cards; choice chips Active / Pending / Responding / Escalated / Resolved / All; search; priority and category filters. Order: escalated, then unhandled, then priority, then longest waiting | Workflow step 3, dashboard notified (item 8) |
 | **Incident details** | Description, photos, map with GPS accuracy and QR tag, **Acknowledge**, confirm or override priority, **assign responder**, **Pending → Responding → Resolved**, reopen, reporter card with **Call** button, chat, response-time timeline, activity log | Workflow steps 4–7 (item 8); call (item 52); chat (item 53) |
-| **Broadcast Alerts** | Compose Info / Warning / Emergency alerts with templates, confirmation step, sent history | Emergency alert broadcasting (Section 2.2) |
+| **Campus alerts** | Compose Info / Warning / Emergency alerts with templates, confirmation step, sent history | Emergency alert broadcasting (Section 2.2) |
 | **Analytics** | Reports per day, by type, by priority, by location; avg. time to acknowledge and resolve; % of High reports acknowledged on time; measured report-to-dashboard time; **CSV export** | Response-time tracking, data-driven decisions (items 5, 10); Table XII measurements |
 | **Users** | Search and filter all accounts; change role student / responder / admin through the `setUserRole` Cloud Function | User management with roles (item 54) |
-| **Incident Types** | Add and edit types, default priority, keywords that raise to High, hide or show in app | Incident type management (item 51); rule-based priority tagging (items 1, 9) |
-| **Location Tags** | Add and edit campus locations, live QR preview, printable QR sheet | QR-based campus location tagging (item 9) |
+| **Incident categories** | Add and edit types, default priority, keywords that raise to High, hide or show in app | Incident type management (item 51); rule-based priority tagging (items 1, 9) |
+| **Campus map** | Schematic campus map (or Google Map with an API key) with active incidents colored by priority and QR tags | GPS-based location (Section 2.2) |
+| **QR location tags** | Add and edit campus locations, live QR preview, printable QR sheet | QR-based campus location tagging (item 9) |
+| **Profile** | Like the app's profile screen: contact and account info, log out | — |
 | **Settings** | Security hotline dialed by the app; escalation minutes | Call feature (item 52); escalation rule (Table XI) |
 
 Live behavior on every page: a new **High-priority or SOS** report or an **escalation** plays an alert tone and shows a red toast linking to the incident. The sidebar shows the pending count, and the top bar shows escalated and high-priority counts.

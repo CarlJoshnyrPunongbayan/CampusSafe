@@ -20,8 +20,10 @@ export function LiveProviders({ children }: { children: ReactNode }) {
 
   const push = useCallback((toast: Omit<Toast, 'id'>) => {
     const id = nextId.current++
-    setToasts((t) => [...t, { ...toast, id }].slice(-4))
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), toast.tone === 'urgent' ? 12_000 : 5_000)
+    // Like Material SnackBars, a new routine message replaces the previous one.
+    // Urgent incident alerts stay stacked (up to 3) until they time out or are opened.
+    setToasts((t) => [...t.filter((x) => x.tone === 'urgent'), { ...toast, id }].slice(-3))
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), toast.tone === 'urgent' ? 12_000 : 4_000)
   }, [])
 
   return (

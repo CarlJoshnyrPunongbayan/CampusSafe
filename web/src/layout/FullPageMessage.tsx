@@ -1,5 +1,5 @@
-import { ShieldAlert } from 'lucide-react'
-import { Button, IconTile } from '../components/ui'
+import { Icon } from '../components/Icon'
+import { Button } from '../components/ui'
 
 interface Props {
   title: string
@@ -10,14 +10,16 @@ interface Props {
 export function FullPageMessage({ title, body, action }: Props) {
   return (
     <div className="flex min-h-screen items-center justify-center p-6">
-      <div className="max-w-md text-center">
+      <div className="max-w-[440px] text-center">
         <div className="flex justify-center">
-          <IconTile icon={ShieldAlert} />
+          <span className="flex h-[72px] w-[72px] items-center justify-center rounded-[22px] bg-soft-blue">
+            <Icon name="gpp_maybe" size={38} className="text-blue" />
+          </span>
         </div>
-        <h1 className="mt-4 text-xl font-bold">{title}</h1>
+        <h1 className="mt-6 text-[28px] font-bold tracking-[-0.5px]">{title}</h1>
         {body && <p className="mt-2 text-muted">{body}</p>}
         {action && (
-          <Button className="mt-6" onClick={action.onClick}>
+          <Button size="lg" className="mt-8 w-full" onClick={action.onClick}>
             {action.label}
           </Button>
         )}

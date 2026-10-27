@@ -1,8 +1,8 @@
 import { addDoc, collection, doc, setDoc } from 'firebase/firestore'
-import { Pencil, Plus, Tags, X } from 'lucide-react'
 import { useState, type FormEvent, type KeyboardEvent } from 'react'
 import { PriorityBadge } from '../components/badges'
-import { Banner, Button, Card, Chip, EmptyState, Field, Input, Modal, PageHeader, Select, Spinner } from '../components/ui'
+import { Icon } from '../components/Icon'
+import { Banner, Button, Card, Chip, EmptyState, Field, IconTile, Input, Modal, PageHeader, Select, Spinner } from '../components/ui'
 import { db } from '../lib/firebase'
 import { useRefData } from '../lib/refData'
 import { useToast } from '../lib/toast'
@@ -18,14 +18,14 @@ export function IncidentTypesPage() {
   return (
     <div>
       <PageHeader
-        title="Incident Types"
-        subtitle="The categories students choose from, and the rules used for automatic priority tagging."
-        actions={<Button icon={Plus} onClick={() => setEditing({ id: null, data: EMPTY })}>Add type</Button>}
+        title="Incident categories"
+        subtitle="What students can report, and the rules for automatic priority tagging."
+        actions={<Button icon="add" onClick={() => setEditing({ id: null, data: EMPTY })}>Add category</Button>}
       />
 
-      <div className="mb-5">
+      <div className="mb-[18px]">
         <Banner
-          icon={Tags}
+          icon="rule"
           title="How rule-based priority tagging works"
           body="SOS requests are always High. If the description contains one of a type's keywords, the report becomes High. Otherwise the type's default priority is used. Officers confirm or change it on each report."
         />
@@ -34,7 +34,7 @@ export function IncidentTypesPage() {
       {loading ? (
         <Spinner />
       ) : types.length === 0 ? (
-        <Card><EmptyState icon={Tags} title="No incident types yet" body="Add the categories students can report." /></Card>
+        <Card><EmptyState icon="category" title="No categories yet" body="Add the categories students can report." /></Card>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {types.map((t) => (
@@ -52,6 +52,10 @@ function TypeCard({ type, onEdit }: { type: WithId<IncidentType>; onEdit: () => 
   return (
     <Card className={`p-[17px] ${type.active ? '' : 'opacity-60'}`}>
       <div className="flex items-start justify-between gap-2">
+        <IconTile icon="category" tone={type.defaultPriority === 'High' ? 'danger' : type.defaultPriority === 'Medium' ? 'warning' : 'blue'} />
+        <Button variant="text" size="sm" icon="edit" onClick={onEdit} aria-label={`Edit ${type.name}`} />
+      </div>
+      <div className="mt-4">
         <div>
           <p className="text-[15px] font-bold">{type.name}</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
@@ -60,7 +64,6 @@ function TypeCard({ type, onEdit }: { type: WithId<IncidentType>; onEdit: () => 
             {!type.active && <Chip tone="muted">Hidden</Chip>}
           </div>
         </div>
-        <Button variant="ghost" size="sm" icon={Pencil} onClick={onEdit} aria-label={`Edit ${type.name}`} />
       </div>
       <p className="mt-4 mb-1.5 text-xs font-bold text-muted">Keywords that raise to High</p>
       <div className="flex flex-wrap gap-1.5">
@@ -96,10 +99,10 @@ function TypeForm({ initial, onClose }: { initial: { id: string | null; data: In
     try {
       if (initial.id) await setDoc(doc(db, 'incidentTypes', initial.id), payload)
       else await addDoc(collection(db, 'incidentTypes'), payload)
-      toast({ tone: 'success', title: initial.id ? 'Incident type updated' : 'Incident type added' })
+      toast({ tone: 'success', title: initial.id ? 'Category updated' : 'Category added' })
       onClose()
     } catch {
-      toast({ tone: 'error', title: 'Could not save incident type' })
+      toast({ tone: 'error', title: 'Could not save category' })
     } finally {
       setSaving(false)
     }
@@ -108,12 +111,12 @@ function TypeForm({ initial, onClose }: { initial: { id: string | null; data: In
   return (
     <Modal
       open
-      title={initial.id ? 'Edit incident type' : 'Add incident type'}
+      title={initial.id ? 'Edit category' : 'Add category'}
       onClose={onClose}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="submit" form="type-form" loading={saving} disabled={!data.name.trim()}>Save</Button>
+          <Button variant="text" onClick={onClose}>Cancel</Button>
+          <Button variant="filled" type="submit" form="type-form" loading={saving} disabled={!data.name.trim()}>Save</Button>
         </>
       }
     >
@@ -131,7 +134,7 @@ function TypeForm({ initial, onClose }: { initial: { id: string | null; data: In
         <Field label="Keywords" hint="Press Enter after each keyword. A match in the description makes the report High priority.">
           <div className="flex gap-2">
             <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} onKeyDown={onKeywordKey} placeholder="e.g. unconscious" />
-            <Button type="button" variant="secondary" onClick={addKeyword}>Add</Button>
+            <Button type="button" variant="outlined" className="!h-[50px]" onClick={addKeyword}>Add</Button>
           </div>
         </Field>
         {data.keywords.length > 0 && (
@@ -141,15 +144,15 @@ function TypeForm({ initial, onClose }: { initial: { id: string | null; data: In
                 key={k}
                 type="button"
                 onClick={() => setData({ ...data, keywords: data.keywords.filter((x) => x !== k) })}
-                className="inline-flex items-center gap-1 rounded-full bg-danger/12 px-2.5 py-1 text-xs font-bold text-danger"
+                className="inline-flex items-center gap-1 rounded-[20px] bg-danger/12 px-[9px] py-[5px] text-[11px] font-bold text-danger"
               >
-                {k} <X className="h-3 w-3" />
+                {k} <Icon name="close" size={14} />
               </button>
             ))}
           </div>
         )}
-        <label className="flex items-center gap-3 rounded-control border border-line px-4 py-3">
-          <input type="checkbox" checked={data.active} onChange={(e) => setData({ ...data, active: e.target.checked })} className="h-4 w-4 accent-navy" />
+        <label className="flex cursor-pointer items-center gap-3 rounded-control border border-line px-4 py-3">
+          <input type="checkbox" checked={data.active} onChange={(e) => setData({ ...data, active: e.target.checked })} className="h-[18px] w-[18px] accent-navy" />
           <span>
             <span className="block text-sm font-bold">Show in the mobile app</span>
             <span className="block text-xs text-muted">Hide types you no longer use instead of deleting them, so past reports keep their category.</span>

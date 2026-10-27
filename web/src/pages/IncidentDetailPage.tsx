@@ -1,33 +1,17 @@
 import { collection, doc, orderBy, query, serverTimestamp, updateDoc, type UpdateData } from 'firebase/firestore'
-import {
-  AlertTriangle,
-  ArrowLeft,
-  CheckCircle2,
-  CircleCheck,
-  Clock,
-  Copy,
-  History,
-  ImageOff,
-  MapPin,
-  Phone,
-  QrCode,
-  RotateCcw,
-  ShieldCheck,
-  Truck,
-  UserRound,
-} from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useAuth } from '../auth/useAuth'
 import { EscalatedBadge, PriorityBadge, RoleBadge, SosBadge, StatusBadge } from '../components/badges'
+import { Icon } from '../components/Icon'
 import { IncidentChat } from '../components/IncidentChat'
 import { IncidentMap } from '../components/IncidentMap'
-import { googleMapsUrl } from '../lib/maps'
-import { Banner, Button, Card, CardHeader, EmptyState, Field, Select, Spinner } from '../components/ui'
+import { Avatar, Banner, Button, Card, CardHeader, EmptyState, Field, InfoCard, ListTile, Select, Spinner } from '../components/ui'
 import { db } from '../lib/firebase'
 import { durationBetween, formatDateTime, formatDuration, timeAgo } from '../lib/format'
 import { useCollection, useDocument, useNow } from '../lib/hooks'
 import { incidentLocation, incidentTitle, isEscalatedOpen } from '../lib/incidentLabels'
+import { googleMapsUrl } from '../lib/maps'
 import { userName, useRefData } from '../lib/refData'
 import { useToast } from '../lib/toast'
 import type { ActivityLog, Incident, Priority } from '../lib/types'
@@ -43,9 +27,9 @@ export function IncidentDetailPage() {
   if (!incident) {
     return (
       <Card>
-        <EmptyState icon={AlertTriangle} title="Incident not found" body="It may have been removed, or the link is wrong." />
+        <EmptyState icon="search_off" title="Incident not found" body="It may have been removed, or the link is wrong." />
         <div className="pb-8 text-center">
-          <Link to="/incidents" className="font-bold text-blue">Back to the queue</Link>
+          <Link to="/incidents" className="font-medium text-navy">Back to incident reports</Link>
         </div>
       </Card>
     )
@@ -57,120 +41,103 @@ export function IncidentDetailPage() {
 
   return (
     <div>
-      <Link to="/incidents" className="mb-4 inline-flex items-center gap-1.5 text-sm font-bold text-blue hover:underline">
-        <ArrowLeft className="h-4 w-4" /> Incident Queue
+      <Link to="/incidents" className="-ml-2 mb-3 inline-flex items-center gap-1 rounded-full px-2 py-1 text-sm font-medium text-navy hover:bg-navy/8">
+        <Icon name="arrow_back" size={20} /> Incident reports
       </Link>
 
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            <PriorityBadge priority={incident.priority} />
-            <StatusBadge status={incident.status} />
-            {incident.isSOS && <SosBadge />}
-            {isEscalatedOpen(incident) && <EscalatedBadge />}
-          </div>
-          <h1 className="text-[28px] font-bold leading-tight tracking-tight">{incidentTitle(incident, ref)}</h1>
-          <p className="mt-1 text-sm text-muted">
-            Reported {timeAgo(incident.createdAt, now)} · {formatDateTime(incident.createdAt)} · ID {incident.id.slice(0, 8)}
-          </p>
+      <div className="mb-[18px]">
+        <h1 className="text-[28px] leading-[1.15] font-bold tracking-[-0.5px]">{incidentTitle(incident, ref)}</h1>
+        <p className="mt-[5px] text-muted">
+          {incidentLocation(incident, ref)} • {timeAgo(incident.createdAt, now)}
+        </p>
+        <div className="mt-2.5 flex flex-wrap gap-[7px]">
+          <StatusBadge status={incident.status} />
+          <PriorityBadge priority={incident.priority} />
+          {incident.isSOS && <SosBadge />}
+          {isEscalatedOpen(incident) && <EscalatedBadge />}
         </div>
       </div>
 
       {isEscalatedOpen(incident) && (
-        <div className="mb-5">
+        <div className="mb-[18px]">
           <Banner
             tone="danger"
-            icon={AlertTriangle}
-            title="Escalated: this High-priority report has not been acknowledged"
+            icon="warning_amber"
+            title="Escalated: High-priority report not acknowledged"
             body={`Escalated ${timeAgo(incident.escalatedAt, now)}. Acknowledge it and assign a responder now.`}
           />
         </div>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-3">
-        <div className="space-y-5 lg:col-span-2">
-          <Card>
-            <CardHeader title="Report details" />
-            <div className="space-y-4 px-5 py-4">
-              <p className="whitespace-pre-wrap">{incident.description || <span className="text-muted">No description provided.</span>}</p>
-              <dl className="grid gap-3 text-sm sm:grid-cols-2">
-                <Detail label="Incident type" value={incident.isSOS ? 'SOS request' : type?.name ?? incident.typeId} />
-                <Detail label="Reported from phone at" value={formatDateTime(incident.clientCreatedAt)} />
-                <Detail label="Priority tagging" value={incident.priorityReason ?? 'Pending'} />
-                <Detail label="Priority confirmed by officer" value={incident.priorityConfirmed ? 'Yes' : 'Not yet'} />
-                {incident.escalated && <Detail label="Escalation" value={`Escalated ${formatDateTime(incident.escalatedAt)} (not acknowledged in time)`} />}
-              </dl>
-            </div>
-          </Card>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="space-y-4 lg:col-span-2">
+          <InfoCard
+            title="Report details"
+            rows={[
+              ['Category', incident.isSOS ? 'SOS request' : type?.name ?? incident.typeId],
+              ['Reported', formatDateTime(incident.createdAt)],
+              ['Sent from phone at', formatDateTime(incident.clientCreatedAt)],
+              ['Priority tagging', incident.priorityReason ?? 'Pending'],
+              ['Priority confirmed', incident.priorityConfirmed ? 'Yes' : 'Not yet'],
+              ...(incident.escalated ? [['Escalation', `Escalated ${formatDateTime(incident.escalatedAt)}`] as [string, string]] : []),
+              ['Reference ID', incident.id.slice(0, 8)],
+            ]}
+          >
+            <p className="mt-3 rounded-control bg-background px-4 py-3 whitespace-pre-wrap">
+              {incident.description || <span className="text-muted">No description provided.</span>}
+            </p>
+          </InfoCard>
 
           <Card>
             <CardHeader title="Photos" subtitle={`${incident.photoUrls?.length ?? 0} of 3 attached`} />
-            <div className="p-5">
+            <div className="p-4">
               {incident.photoUrls?.length ? (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {incident.photoUrls.map((url, i) => (
-                    <a key={url} href={url} target="_blank" rel="noreferrer" className="group overflow-hidden rounded-control border border-line">
-                      <img src={url} alt={`Incident photo ${i + 1}`} className="aspect-square w-full object-cover transition group-hover:scale-105" />
+                    <a key={url} href={url} target="_blank" rel="noreferrer" className="overflow-hidden rounded-control border border-line">
+                      <img src={url} alt={`Incident photo ${i + 1}`} className="aspect-square w-full object-cover transition hover:scale-105" />
                     </a>
                   ))}
                 </div>
               ) : (
-                <div className="flex items-center gap-2 text-sm text-muted">
-                  <ImageOff className="h-4 w-4" /> No photos attached
-                </div>
+                <p className="flex items-center gap-2 text-muted"><Icon name="hide_image" size={20} /> No photos attached</p>
               )}
             </div>
           </Card>
 
           <Card>
-            <CardHeader
-              title="Location"
-              subtitle={incidentLocation(incident, ref)}
-              action={point && (
-                <a href={googleMapsUrl(point)} target="_blank" rel="noreferrer" className="text-sm font-bold text-blue hover:underline">
+            <ListTile
+              leading={<Icon name="location_on" className="text-muted" />}
+              title={<span className="font-medium">{tag ? tag.name : 'Reported location'}</span>}
+              subtitle={
+                <>
+                  {tag ? `QR tag · ${tag.building}, floor ${tag.floor}` : 'From phone GPS'}
+                  {incident.location?.accuracy != null && (
+                    <span className={incident.location.accuracy > 20 ? 'text-warning' : ''}> · accuracy ±{Math.round(incident.location.accuracy)} m</span>
+                  )}
+                </>
+              }
+              trailing={point && (
+                <a href={googleMapsUrl(point)} target="_blank" rel="noreferrer" className="rounded-full px-3 py-1.5 text-sm font-medium text-navy hover:bg-navy/8">
                   Directions
                 </a>
               )}
             />
-            <div className="space-y-3 p-5">
-              {point ? <IncidentMap point={point} label={tag?.name ?? 'Reported location'} /> : <p className="text-sm text-muted">The reporter did not share a location.</p>}
-              <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-                {tag && (
-                  <span className="flex items-center gap-1.5">
-                    <QrCode className="h-4 w-4 text-blue" /> QR tag: <b>{tag.name}</b> ({tag.building}, floor {tag.floor})
-                  </span>
-                )}
-                {incident.location && (
-                  <span className="flex items-center gap-1.5">
-                    <MapPin className="h-4 w-4 text-blue" /> GPS accuracy:{' '}
-                    <b className={incident.location.accuracy != null && incident.location.accuracy > 20 ? 'text-warning' : ''}>
-                      {incident.location.accuracy != null ? `±${Math.round(incident.location.accuracy)} m` : 'unknown'}
-                    </b>
-                  </span>
-                )}
-              </div>
+            <div className="px-4 pb-4">
+              {point ? <IncidentMap point={point} label={tag?.name ?? 'Reported location'} /> : <p className="text-muted">The reporter did not share a location.</p>}
             </div>
           </Card>
 
           <IncidentChat incidentId={incident.id} />
         </div>
 
-        <div className="space-y-5">
-          <ActionsCard incident={{ ...incident }} />
+        <div className="space-y-4">
+          <ActionsCard incident={incident} />
           <ReporterCard uid={incident.reporterId} />
-          <TimelineCard incident={incident} />
+          <StatusUpdatesCard incident={incident} />
           <ActivityCard incidentId={incident.id} />
         </div>
       </div>
-    </div>
-  )
-}
-
-function Detail({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-control bg-background px-3 py-2.5">
-      <dt className="text-xs text-muted">{label}</dt>
-      <dd className="mt-0.5 font-medium">{value}</dd>
     </div>
   )
 }
@@ -207,16 +174,17 @@ function ActionsCard({ incident }: { incident: Incident & { id: string } }) {
 
   return (
     <Card>
-      <CardHeader title="Response" subtitle="Each action is recorded in the activity log" />
-      <div className="space-y-5 p-5">
+      <CardHeader title="Response" subtitle="Each action is saved to the activity log" />
+      <div className="space-y-4 p-4">
         {!incident.acknowledgedAt ? (
-          <Button className="w-full" icon={ShieldCheck} loading={busy === 'ack'} onClick={() => update('ack', { acknowledgedAt: serverTimestamp() }, 'Report acknowledged')}>
+          <Button size="lg" className="w-full" icon="verified_user" loading={busy === 'ack'} onClick={() => update('ack', { acknowledgedAt: serverTimestamp() }, 'Report acknowledged')}>
             Acknowledge report
           </Button>
         ) : (
-          <p className="flex items-center gap-2 rounded-control bg-success/10 px-3 py-2.5 text-sm font-medium text-success">
-            <CircleCheck className="h-4 w-4" /> Acknowledged {formatDateTime(incident.acknowledgedAt)}
-          </p>
+          <div className="flex items-center gap-3 rounded-[14px] bg-success/12 px-4 py-3 text-sm">
+            <Icon name="check_circle" size={20} className="text-success" />
+            <span>Acknowledged {formatDateTime(incident.acknowledgedAt)}</span>
+          </div>
         )}
 
         <Field label="Priority" hint={incident.priorityReason ? `System: ${incident.priorityReason}` : undefined}>
@@ -227,7 +195,8 @@ function ActionsCard({ incident }: { incident: Incident & { id: string } }) {
               <option value="Low">Low</option>
             </Select>
             <Button
-              variant="secondary"
+              variant="outlined"
+              className="!h-[50px]"
               loading={busy === 'priority'}
               disabled={!priority || (priority === incident.priority && incident.priorityConfirmed)}
               onClick={() => update('priority', { priority: priority as Priority, priorityConfirmed: true }, priority === incident.priority ? 'Priority confirmed' : `Priority changed to ${priority}`)}
@@ -237,7 +206,7 @@ function ActionsCard({ incident }: { incident: Incident & { id: string } }) {
           </div>
         </Field>
 
-        <Field label="Assigned responder" hint={responders.length === 0 ? 'No responder accounts yet. Promote users on the Users page.' : undefined}>
+        <Field label="Assigned responder" hint={responders.length === 0 ? 'No responder accounts yet. Set roles on the Users page.' : undefined}>
           <Select
             value={incident.assignedResponderId ?? ''}
             disabled={busy === 'assign' || incident.status === 'Resolved'}
@@ -251,106 +220,93 @@ function ActionsCard({ incident }: { incident: Incident & { id: string } }) {
           </Select>
         </Field>
 
-        <div>
-          <p className="mb-1.5 text-sm font-bold">Status</p>
-          <div className="grid gap-2">
-            {incident.status === 'Pending' && (
-              <Button variant="primary" icon={Truck} loading={busy === 'responding'} onClick={() => update('responding', { status: 'Responding', respondingAt: serverTimestamp(), ...ack }, 'Marked as Responding')}>
-                Mark as Responding
-              </Button>
-            )}
-            {incident.status !== 'Resolved' && (
-              <Button variant="success" icon={CheckCircle2} loading={busy === 'resolved'} onClick={() => update('resolved', { status: 'Resolved', resolvedAt: serverTimestamp(), ...ack }, 'Incident resolved')}>
-                Mark as Resolved
-              </Button>
-            )}
-            {incident.status === 'Resolved' && (
-              <Button variant="secondary" icon={RotateCcw} loading={busy === 'reopen'} onClick={() => update('reopen', { status: 'Pending' }, 'Incident reopened')}>
-                Reopen incident
-              </Button>
-            )}
-          </div>
+        <div className="space-y-2.5">
+          <p className="text-[13px] font-semibold">Status</p>
+          {incident.status === 'Pending' && (
+            <Button size="lg" className="w-full" icon="directions_run" loading={busy === 'responding'} onClick={() => update('responding', { status: 'Responding', respondingAt: serverTimestamp(), ...ack }, 'Marked as Responding')}>
+              Mark as responding
+            </Button>
+          )}
+          {incident.status !== 'Resolved' && (
+            <Button size="lg" variant="success" className="w-full" icon="task_alt" loading={busy === 'resolved'} onClick={() => update('resolved', { status: 'Resolved', resolvedAt: serverTimestamp(), ...ack }, 'Incident resolved')}>
+              Mark as resolved
+            </Button>
+          )}
+          {incident.status === 'Resolved' && (
+            <Button size="lg" variant="outlined" className="w-full !rounded-control" icon="restart_alt" loading={busy === 'reopen'} onClick={() => update('reopen', { status: 'Pending' }, 'Incident reopened')}>
+              Reopen incident
+            </Button>
+          )}
         </div>
       </div>
     </Card>
   )
 }
 
+/** Reporter details plus the SOS status screen's "Communication options" (Call / Chat). */
 function ReporterCard({ uid }: { uid: string }) {
   const ref = useRefData()
   const toast = useToast()
   const reporter = ref.users.get(uid)
+  if (!reporter) return <InfoCard title="Reporter" rows={[['Profile', 'Not found']]} />
   return (
-    <Card>
-      <CardHeader title="Reporter" />
-      <div className="space-y-3 p-5">
-        {reporter ? (
-          <>
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-soft-blue text-blue">
-                <UserRound className="h-5 w-5" />
-              </span>
-              <div className="min-w-0">
-                <p className="truncate font-bold">{reporter.name}</p>
-                <p className="truncate text-xs text-muted">{reporter.studentId ? `ID ${reporter.studentId} · ` : ''}{reporter.email}</p>
-              </div>
-              <span className="ml-auto"><RoleBadge role={reporter.role} /></span>
-            </div>
-            {reporter.mobileNo ? (
-              <div className="flex gap-2">
-                <a href={`tel:${reporter.mobileNo}`} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-control bg-success text-sm font-bold text-white hover:brightness-95">
-                  <Phone className="h-4 w-4" /> Call {reporter.mobileNo}
-                </a>
-                <Button
-                  variant="secondary"
-                  icon={Copy}
-                  aria-label="Copy number"
-                  onClick={() => navigator.clipboard?.writeText(reporter.mobileNo).then(() => toast({ tone: 'success', title: 'Number copied' }))}
-                />
-              </div>
-            ) : (
-              <p className="text-sm text-muted">No mobile number on file.</p>
-            )}
-          </>
-        ) : (
-          <p className="text-sm text-muted">Reporter profile not found.</p>
-        )}
-      </div>
-    </Card>
+    <InfoCard
+      title="Reporter"
+      action={<RoleBadge role={reporter.role} />}
+      rows={[
+        ['Name', reporter.name],
+        ...(reporter.studentId ? [['Student ID', reporter.studentId] as [string, string]] : []),
+        ['Email', <span key="email" className="break-all">{reporter.email}</span>],
+        ['Phone', reporter.mobileNo || '—'],
+      ]}
+    >
+      {reporter.mobileNo && (
+        <div className="mt-3 flex gap-3">
+          <a href={`tel:${reporter.mobileNo}`} className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-full bg-navy text-sm font-medium text-white hover:bg-navy-dark">
+            <Icon name="call" size={18} /> Call
+          </a>
+          <Button
+            variant="outlined"
+            className="!h-10 flex-1"
+            icon="content_copy"
+            onClick={() => navigator.clipboard?.writeText(reporter.mobileNo).then(() => toast({ tone: 'success', title: 'Number copied' }))}
+          >
+            Copy number
+          </Button>
+        </div>
+      )}
+    </InfoCard>
   )
 }
 
-function TimelineCard({ incident }: { incident: Incident }) {
+/** Like the SOS status screen's "Status updates" list, with response times. */
+function StatusUpdatesCard({ incident }: { incident: Incident }) {
   const { config } = useRefData()
   const target = (config.escalationMinutes ?? 2) * 60_000
-  const ackMs = durationBetween(incident.createdAt, incident.acknowledgedAt)
   const steps = [
-    { label: 'Reported', at: incident.createdAt, icon: Clock },
-    { label: 'Acknowledged', at: incident.acknowledgedAt, icon: ShieldCheck, since: ackMs },
-    { label: 'Responding', at: incident.respondingAt, icon: Truck, since: durationBetween(incident.createdAt, incident.respondingAt) },
-    { label: 'Resolved', at: incident.resolvedAt, icon: CheckCircle2, since: durationBetween(incident.createdAt, incident.resolvedAt) },
+    { label: 'Report received', at: incident.createdAt, since: null },
+    { label: 'Security acknowledged', at: incident.acknowledgedAt, since: durationBetween(incident.createdAt, incident.acknowledgedAt), late: true },
+    { label: 'Responder en route', at: incident.respondingAt, since: durationBetween(incident.createdAt, incident.respondingAt) },
+    { label: 'Resolved', at: incident.resolvedAt, since: durationBetween(incident.createdAt, incident.resolvedAt) },
   ]
   return (
     <Card>
-      <CardHeader title="Response times" subtitle="Measured from when the report reached the server" />
-      <ol className="space-y-4 p-5">
-        {steps.map(({ label, at, icon: Icon, since }) => (
-          <li key={label} className="flex items-start gap-3">
-            <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${at ? 'bg-navy text-white' : 'bg-background text-muted'}`}>
-              <Icon className="h-4 w-4" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className={`text-sm font-bold ${at ? '' : 'text-muted'}`}>{label}</p>
-              <p className="text-xs text-muted">{at ? formatDateTime(at) : 'Not yet'}</p>
-            </div>
-            {since != null && (
-              <span className={`text-xs font-bold ${label === 'Acknowledged' && incident.priority === 'High' && since > target ? 'text-danger' : 'text-ink'}`}>
-                +{formatDuration(since)}
-              </span>
-            )}
-          </li>
+      <CardHeader title="Status updates" subtitle="Time since the report reached the server" />
+      <div className="py-1">
+        {steps.map((s) => (
+          <ListTile
+            key={s.label}
+            leading={s.at ? <Avatar icon="check" tone="success" /> : <Avatar icon="schedule" tone="muted" />}
+            title={<span className={s.at ? '' : 'text-muted'}>{s.label}</span>}
+            subtitle={s.at ? formatDateTime(s.at) : 'Not yet'}
+            trailing={
+              s.since != null && (
+                <span className={`text-sm font-bold ${s.late && incident.priority === 'High' && s.since > target ? 'text-danger' : ''}`}>+{formatDuration(s.since)}</span>
+              )
+            }
+          />
         ))}
-      </ol>
+      </div>
     </Card>
   )
 }
@@ -373,29 +329,24 @@ function ActivityCard({ incidentId }: { incidentId: string }) {
 
   const describe = (log: ActivityLog) => {
     if (log.action === 'responder_assigned') return log.to ? `assigned ${userName(ref.users, log.to)}` : 'removed the assigned responder'
-    if (log.from || log.to) {
-      const from = log.from ? `${log.from} → ` : ''
-      return `${ACTION_LABELS[log.action] ?? log.action} (${from}${log.to ?? ''})`
-    }
+    if (log.from || log.to) return `${ACTION_LABELS[log.action] ?? log.action} (${log.from ? `${log.from} → ` : ''}${log.to ?? ''})`
     return ACTION_LABELS[log.action] ?? log.action
   }
 
   return (
     <Card>
       <CardHeader title="Activity log" />
-      <div className="p-5">
+      <div className="p-4">
         {loading ? (
           <Spinner />
         ) : logs.length === 0 ? (
-          <p className="flex items-center gap-2 text-sm text-muted"><History className="h-4 w-4" /> No activity recorded yet.</p>
+          <p className="flex items-center gap-2 text-muted"><Icon name="history" size={20} /> No activity recorded yet.</p>
         ) : (
           <ol className="relative space-y-4 border-l border-line pl-4">
             {logs.map((log) => (
               <li key={log.id} className="relative">
                 <span className={`absolute top-1.5 -left-[21px] h-2.5 w-2.5 rounded-full ${log.action === 'escalated' ? 'bg-danger' : 'bg-blue'}`} />
-                <p className="text-sm">
-                  <b>{userName(ref.users, log.actorId)}</b> {describe(log)}
-                </p>
+                <p className="text-sm"><b>{userName(ref.users, log.actorId)}</b> {describe(log)}</p>
                 {log.note && <p className="text-xs text-muted">{log.note}</p>}
                 <p className="text-xs text-muted">{formatDateTime(log.at)}</p>
               </li>

@@ -1,8 +1,7 @@
 import { collection, orderBy, query, Timestamp, where } from 'firebase/firestore'
-import { Activity, CheckCircle2, Download, FileBarChart, Gauge, Timer } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { Button, Card, CardHeader, EmptyState, PageHeader, Select, Spinner, StatCard } from '../components/ui'
+import { Button, Card, CardHeader, EmptyState, FeatureCard, PageHeader, Select, Spinner } from '../components/ui'
 import { db } from '../lib/firebase'
 import { average, durationBetween, formatDuration, toDate } from '../lib/format'
 import { useCollection } from '../lib/hooks'
@@ -144,7 +143,7 @@ export function AnalyticsPage() {
                 <option key={r.days} value={r.days}>{r.label}</option>
               ))}
             </Select>
-            <Button variant="secondary" icon={Download} onClick={exportCsv} disabled={incidents.length === 0}>Export CSV</Button>
+            <Button variant="outlined" icon="download" className="!h-[50px]" onClick={exportCsv} disabled={incidents.length === 0}>Export CSV</Button>
           </>
         }
       />
@@ -152,23 +151,23 @@ export function AnalyticsPage() {
       {loading ? (
         <Spinner />
       ) : incidents.length === 0 ? (
-        <Card><EmptyState icon={FileBarChart} title="No reports in this period" body="Choose a longer date range." /></Card>
+        <Card><EmptyState icon="insights" title="No reports in this period" body="Choose a longer date range." /></Card>
       ) : (
         <>
-          <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatCard icon={Activity} label="Total reports" value={stats.total} hint={`${stats.resolved} resolved`} />
-            <StatCard icon={Timer} tone="warning" label="Avg. time to acknowledge" value={formatDuration(stats.avgAck)} hint="Report received → acknowledged" />
-            <StatCard icon={CheckCircle2} tone="success" label="Avg. time to resolve" value={formatDuration(stats.avgResolve)} hint="Report received → resolved" />
-            <StatCard
-              icon={Gauge}
+          <div className="mb-[18px] grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <FeatureCard icon="insights" title="Total reports" value={stats.total} subtitle={`${stats.resolved} resolved`} />
+            <FeatureCard icon="timer" tone="warning" title="Avg. time to acknowledge" value={formatDuration(stats.avgAck)} subtitle="Report received → acknowledged" />
+            <FeatureCard icon="task_alt" tone="success" title="Avg. time to resolve" value={formatDuration(stats.avgResolve)} subtitle="Report received → resolved" />
+            <FeatureCard
+              icon="speed"
               tone="danger"
-              label="High priority on time"
+              title="High priority on time"
               value={stats.highAckRate == null ? '—' : `${stats.highAckRate}%`}
-              hint={`Acknowledged within ${formatDuration(stats.target)} (${stats.highCount} High)`}
+              subtitle={`Acknowledged within ${formatDuration(stats.target)} (${stats.highCount} High)`}
             />
           </div>
 
-          <div className="grid gap-5 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             <Card className="lg:col-span-2">
               <CardHeader title="Reports per day" subtitle={RANGES.find((r) => r.days === days)?.label} />
               <div className="h-64 px-2 py-4">
@@ -192,11 +191,11 @@ export function AnalyticsPage() {
             <Card>
               <CardHeader title="Reports by priority" subtitle="After officer confirmation" />
               <HorizontalBars data={stats.byPriority} colorOf={(name) => C.priority[name as Priority]} />
-              <div className="border-t border-line px-5 py-4">
+              <div className="border-t border-line px-4 py-4">
                 <p className="mb-2 text-sm font-bold">Average time to acknowledge</p>
                 <dl className="grid grid-cols-3 gap-2 text-center">
                   {stats.ackByPriority.map((p) => (
-                    <div key={p.name} className="rounded-control bg-background px-2 py-2.5">
+                    <div key={p.name} className="rounded-control bg-soft-blue px-2 py-2.5">
                       <dt className="flex items-center justify-center gap-1.5 text-xs text-muted">
                         <span className="h-2 w-2 rounded-full" style={{ background: C.priority[p.name] }} />
                         {p.name}
@@ -230,12 +229,12 @@ export function AnalyticsPage() {
 
 function PerfRow({ label, value, target }: { label: string; value: string; target: string }) {
   return (
-    <div className="flex items-center justify-between gap-4 px-5 py-3.5">
+    <div className="flex items-center justify-between gap-4 px-4 py-3">
       <div>
         <dt className="text-sm font-medium">{label}</dt>
         <dd className="text-xs text-muted">{target}</dd>
       </div>
-      <span className="text-lg font-extrabold">{value}</span>
+      <span className="text-lg font-bold">{value}</span>
     </div>
   )
 }

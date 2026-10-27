@@ -1,5 +1,4 @@
 import { doc, setDoc } from 'firebase/firestore'
-import { Phone, Save, Timer } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Button, Card, CardHeader, Field, IconTile, Input, PageHeader } from '../components/ui'
 import { db } from '../lib/firebase'
@@ -36,15 +35,15 @@ function SettingsForm({ hotline: initialHotline, minutes: initialMinutes }: { ho
   }
 
   return (
-    <div>
-      <PageHeader title="Settings" subtitle="System-wide options used by the mobile app and the escalation rule." />
-      <form onSubmit={save} className="max-w-2xl space-y-5">
+    <div className="max-w-2xl">
+      <PageHeader title="Settings" subtitle="Options used by the mobile app and the escalation rule." />
+      <form onSubmit={save} className="space-y-4">
         <Card>
           <CardHeader title="Security office hotline" />
-          <div className="flex gap-4 p-5">
-            <IconTile icon={Phone} tone="success" />
+          <div className="flex gap-4 p-4">
+            <IconTile icon="call" tone="success" />
             <div className="flex-1">
-              <Field label="Phone number" hint="Dialed when a student taps Call Security in the app (FR12)." error={hotline && !hotlineValid ? 'Enter a valid phone number' : undefined}>
+              <Field label="Phone number" hint="Dialed when a student taps Call in the app (FR12)." error={hotline && !hotlineValid ? 'Enter a valid phone number' : undefined}>
                 <Input value={hotline} onChange={(e) => setHotline(e.target.value)} placeholder="e.g. 0917 000 0000 or (042) 710 0000" />
               </Field>
             </div>
@@ -52,12 +51,12 @@ function SettingsForm({ hotline: initialHotline, minutes: initialMinutes }: { ho
         </Card>
         <Card>
           <CardHeader title="Escalation rule" />
-          <div className="flex gap-4 p-5">
-            <IconTile icon={Timer} tone="danger" />
+          <div className="flex gap-4 p-4">
+            <IconTile icon="timer" tone="danger" />
             <div className="flex-1">
               <Field
                 label="Escalate High-priority reports not acknowledged after (minutes)"
-                hint="Escalated reports are flagged in red and the security office is notified again. The study target is 2 minutes."
+                hint="Escalated reports turn red and the security office is notified again. The study target is 2 minutes."
                 error={!minutesValid ? 'Enter a whole number from 1 to 30' : undefined}
               >
                 <Input type="number" min={1} max={30} value={minutes} onChange={(e) => setMinutes(e.target.value)} className="!w-32" />
@@ -65,7 +64,7 @@ function SettingsForm({ hotline: initialHotline, minutes: initialMinutes }: { ho
             </div>
           </div>
         </Card>
-        <Button type="submit" icon={Save} loading={saving} disabled={!minutesValid || !hotlineValid}>Save settings</Button>
+        <Button type="submit" size="lg" icon="save" className="w-full sm:w-auto" loading={saving} disabled={!minutesValid || !hotlineValid}>Save settings</Button>
       </form>
     </div>
   )
