@@ -1,0 +1,27 @@
+rules_version = '2';
+
+// CampusSafe Storage Security Rules
+// Incident photos are stored at incidents/{reporterUid}/{incidentId}/{fileName}.
+// Photos are uploaded before the incident document is written (needed by the
+// offline queue), so access is checked by the reporter's uid in the path.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function role() {
+      return request.auth.token.get('role', 'student');
+    }
+
+    match /incidents/{reporterUid}/{incidentId}/{fileName} {
+      allow read: if request.auth != null
+        && (request.auth.uid == reporterUid || role() in ['admin', 'responder']);
+
+      // NFR: photos must be compressed to 1 MB or less before upload.
+      allow create: if request.auth != null
+        && request.auth.uid == reporterUid
+        && request.resource.size <= 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+
+      allow update, delete: if false;
+    }
+  }
+}

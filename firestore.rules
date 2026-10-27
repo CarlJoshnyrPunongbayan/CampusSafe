@@ -1,0 +1,166 @@
+rules_version = '2';
+
+// CampusSafe Firestore Security Rules
+// Roles live in Firebase Auth custom claims (token.role) and are set only by the
+// setUserRole Cloud Function, so a client can never promote itself.
+// A signed-in account without a role claim is treated as a student.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers ----------
+    function signedIn() {
+      return request.auth != null;
+    }
+    function role() {
+      return request.auth.token.get('role', 'student');
+    }
+    function isAdmin() {
+      return signedIn() && role() == 'admin';
+    }
+    function isResponder() {
+      return signedIn() && role() == 'responder';
+    }
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+    function changed() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+    function isString(v, min, max) {
+      return v is string && v.size() >= min && v.size() <= max;
+    }
+
+    // ---------- users ----------
+    // users/{uid}: name, studentId, email, mobileNo, role, fcmToken, createdAt
+    match /users/{uid} {
+      allow read: if isSelf(uid) || isAdmin() || isResponder();
+
+      // Registration: users create their own profile, always as a student.
+      allow create: if isSelf(uid)
+        && request.resource.data.keys().hasOnly(['name', 'studentId', 'email', 'mobileNo', 'role', 'fcmToken', 'createdAt'])
+        && request.resource.data.keys().hasAll(['name', 'email', 'mobileNo', 'role', 'createdAt'])
+        && request.resource.data.role == 'student'
+        && request.resource.data.email == request.auth.token.email
+        && isString(request.resource.data.name, 1, 100)
+        && isString(request.resource.data.mobileNo, 7, 20)
+        && request.resource.data.createdAt == request.time;
+
+      // Users can edit their own contact details and FCM token, never their role.
+      // Admins can edit profiles, but role changes still go through setUserRole.
+      allow update: if (isSelf(uid) && changed().hasOnly(['name', 'mobileNo', 'fcmToken']))
+        || (isAdmin() && !changed().hasAny(['role', 'email', 'createdAt']));
+
+      allow delete: if false;
+    }
+
+    // ---------- reference data (admin-managed) ----------
+    // incidentTypes/{id}: name, defaultPriority, keywords[], active
+    match /incidentTypes/{typeId} {
+      allow read: if signedIn();
+      allow write: if isAdmin()
+        && request.resource.data.defaultPriority in ['High', 'Medium', 'Low']
+        && isString(request.resource.data.name, 1, 60)
+        && request.resource.data.keywords is list
+        && request.resource.data.active is bool;
+    }
+
+    // locationTags/{id}: name, building, floor, lat, lng (encoded in the printed QR code)
+    match /locationTags/{tagId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // config/app: securityHotline, escalationMinutes
+    match /config/{docId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // ---------- incidents ----------
+    match /incidents/{incidentId} {
+      function isReporter() {
+        return signedIn() && resource.data.reporterId == request.auth.uid;
+      }
+      function isAssignedResponder() {
+        return isResponder() && resource.data.assignedResponderId == request.auth.uid;
+      }
+      function canReadIncident() {
+        return isAdmin() || isReporter() || isAssignedResponder();
+      }
+
+      allow read: if canReadIncident();
+
+      // Reporters submit only the report itself. Priority, assignment and escalation
+      // are set by Cloud Functions or security staff, so clients cannot set them.
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+             'reporterId', 'typeId', 'description', 'photoUrls', 'isSOS',
+             'location', 'locationTagId', 'status', 'clientCreatedAt', 'createdAt'])
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.status == 'Pending'
+        && request.resource.data.isSOS is bool
+        && isString(request.resource.data.description, 0, 2000)
+        && request.resource.data.photoUrls is list
+        && request.resource.data.photoUrls.size() <= 3
+        && request.resource.data.createdAt == request.time;
+
+      // Admins (security office) manage the whole incident lifecycle.
+      // Assigned responders may only move the status forward.
+      allow update: if (isAdmin()
+          && !changed().hasAny(['reporterId', 'createdAt', 'clientCreatedAt'])
+          && request.resource.data.status in ['Pending', 'Responding', 'Resolved'])
+        || (isAssignedResponder()
+          && changed().hasOnly(['status', 'respondingAt', 'resolvedAt'])
+          && request.resource.data.status in ['Responding', 'Resolved']);
+
+      allow delete: if false;
+
+      // incidents/{id}/messages/{id}: senderId, text, sentAt
+      match /messages/{messageId} {
+        function parent() {
+          return get(/databases/$(database)/documents/incidents/$(incidentId)).data;
+        }
+        function canChat() {
+          return isAdmin()
+            || (signedIn() && parent().reporterId == request.auth.uid)
+            || (isResponder() && parent().assignedResponderId == request.auth.uid);
+        }
+        allow read: if canChat();
+        allow create: if canChat()
+          && request.resource.data.keys().hasOnly(['senderId', 'text', 'sentAt'])
+          && request.resource.data.senderId == request.auth.uid
+          && isString(request.resource.data.text, 1, 1000)
+          && request.resource.data.sentAt == request.time;
+        allow update, delete: if false;
+      }
+
+      // incidents/{id}/activityLogs/{id}: written only by Cloud Functions (Admin SDK).
+      match /activityLogs/{logId} {
+        allow read: if isAdmin();
+        allow write: if false;
+      }
+    }
+
+    // ---------- broadcast alerts ----------
+    // alerts/{id}: title, body, severity, sentBy, sentAt
+    match /alerts/{alertId} {
+      allow read: if signedIn();
+      allow create: if isAdmin()
+        && request.resource.data.sentBy == request.auth.uid
+        && request.resource.data.severity in ['Info', 'Warning', 'Emergency']
+        && isString(request.resource.data.title, 1, 100)
+        && isString(request.resource.data.body, 1, 1000)
+        && request.resource.data.sentAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // ---------- measurement data for the evaluation (Section 5.5) ----------
+    // metrics/{id}: kind, value, refId, uid, recordedAt
+    match /metrics/{metricId} {
+      allow read: if isAdmin();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+  }
+}

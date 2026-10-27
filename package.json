@@ -1,0 +1,17 @@
+{
+  "name": "campussafe",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "emulators": "npm --prefix functions run build && firebase emulators:start --project demo-campussafe --import emulator-data --export-on-exit emulator-data",
+    "seed": "node scripts/seed.js",
+    "test:rules": "firebase emulators:exec --only firestore,storage --project demo-campussafe \"vitest run\"",
+    "test:functions": "npm --prefix functions run build && firebase emulators:exec --only auth,firestore,functions --project demo-campussafe \"vitest run --config tests/vitest.functions.config.js\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^12.19.0",
+    "firebase-admin": "^14.5.0",
+    "vitest": "^5.0.5"
+  }
+}
