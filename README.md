@@ -28,25 +28,19 @@ Incident Reporting and Assistance, and Emergency Alert Mobile App: BSIT Capstone
 
 ## Run everything locally (no Firebase project needed)
 
-All development runs on the **Firebase Emulator Suite**, so it costs nothing and does not touch real data.
+All development runs on the **Firebase Emulator Suite**, so it costs nothing and does not touch real data. Full VS Code walkthrough: **[docs/run-in-vscode.md](docs/run-in-vscode.md)**.
 
 ```bash
-# 1. Install dependencies (once)
-npm install
-npm --prefix functions install
-npm --prefix web install
-(cd mobile && flutter pub get)
+npm run setup          # install packages (once, and after each git pull)
 
-# 2. Terminal 1: start the emulators (Auth, Firestore, Functions, Storage). Emulator UI at http://127.0.0.1:4000
-npm run emulators
+npm run emulators      # terminal 1: backend. Emulator UI at http://127.0.0.1:4000
+npm run seed:demo      # terminal 2: test accounts, categories, QR tags and sample incidents
+npm run web            # terminal 3: admin website at http://localhost:5173
+```
 
-# 3. Terminal 2: load sample incident types, location tags and test accounts
-npm run seed              # add  -- --demo  for sample incidents, users and alerts (for presentations)
+In VS Code you can instead press **Ctrl+Shift+B → Start CampusSafe**. For the mobile app, use **Run and Debug → Mobile app (local emulators)**, or:
 
-# 4. Terminal 3: web dashboard at http://localhost:5173
-npm --prefix web run dev
-
-# 5. Terminal 4: mobile app on an Android emulator or a connected device
+```bash
 cd mobile
 flutter run --dart-define=USE_EMULATOR=true
 # On a physical phone on the same Wi-Fi, also add --dart-define=EMULATOR_HOST=<your computer's LAN IP>
@@ -77,6 +71,7 @@ See [docs/firebase-setup.md](docs/firebase-setup.md) for the console steps: crea
 
 ## Documentation
 
+- [docs/run-in-vscode.md](docs/run-in-vscode.md): installing the tools and running everything in VS Code
 - [docs/admin-dashboard.md](docs/admin-dashboard.md): dashboard pages, Cloud Functions and evaluation measurements, mapped to the panel's requirements
 - [docs/mobile-integration.md](docs/mobile-integration.md): what the Flutter user app must read and write to work with the backend
 - [docs/data-model.md](docs/data-model.md): Firestore collections, roles and who can access what

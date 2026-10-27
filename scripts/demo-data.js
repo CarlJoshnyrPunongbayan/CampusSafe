@@ -44,6 +44,10 @@ const TYPE_WEIGHTS = ["theft", "theft", "theft", "hazard", "hazard", "hazard", "
 const MINUTE = 60_000;
 
 export async function seedDemoData({ db, auth, campus, adminUid }) {
+  if (!(await db.collection("incidents").limit(1).get()).empty) {
+    console.log("  demo: skipped, incidents already exist (delete the emulator-data folder to start fresh)");
+    return;
+  }
   const batchWrites = [];
   const write = (ref, data) => batchWrites.push([ref, data]);
 
