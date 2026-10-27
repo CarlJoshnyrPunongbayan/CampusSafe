@@ -53,9 +53,12 @@ Roles are stored as a Firebase Auth **custom claim** (`role`), which Security Ru
 | locationTagId | string? | Reporter (QR scan) |
 | status | `Pending` → `Responding` → `Resolved` | Created as `Pending`; then admin or assigned responder |
 | priority | `High` \| `Medium` \| `Low` | Cloud Function (rule-based tagging); the admin can override it |
+| priorityReason | string | Cloud Function: why that priority was chosen (e.g. `Keyword "knife" in description`) |
 | priorityConfirmed | bool | Admin |
 | assignedResponderId | string? | Admin |
-| escalated | bool | Cloud Function (High, not acknowledged after 2 min) |
+| escalated | bool | Cloud Function (High, not acknowledged after `config/app.escalationMinutes`) |
+| escalatedAt | timestamp? | Cloud Function |
+| updatedBy | string (uid) | Required on every admin/responder update; used as the actor in the activity log |
 | clientCreatedAt | timestamp | Phone time when the report was made (kept for offline reports) |
 | createdAt | timestamp | Server time when the report reached Firestore |
 | acknowledgedAt, respondingAt, resolvedAt | timestamp? | Admin / responder, used for the response-time measurements |

@@ -1,79 +1,42 @@
-import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { deleteApp as deleteAdminApp, initializeApp as initializeAdminApp } from "firebase-admin/app";
-import { getAuth as getAdminAuth } from "firebase-admin/auth";
-import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
-import { deleteApp, initializeApp } from "firebase/app";
-import { connectAuthEmulator, getAuth, signInWithEmailAndPassword, signOut } from "firebase/auth";
-import { connectFunctionsEmulator, getFunctions, httpsCallable } from "firebase/functions";
+import { beforeAll, describe, expect, test } from "vitest";
+import { fnRequire } from "./setup.js";
 
-// Runs inside `firebase emulators:exec`, which sets the *_EMULATOR_HOST variables
-// so the Admin SDK talks to the emulators.
-const PROJECT_ID = "demo-campussafe";
-const PASSWORD = "Passw0rd!";
+const { getAuth } = fnRequire("firebase-admin/auth");
+const { getFirestore } = fnRequire("firebase-admin/firestore");
+const { setUserRole } = fnRequire("./lib/roles.js");
 
-let adminApp, clientApp, auth, setUserRole;
 const uids = {};
-
-async function createUser(key, role) {
-  const user = await getAdminAuth(adminApp).createUser({ email: `${key}@campussafe.test`, password: PASSWORD });
-  if (role) await getAdminAuth(adminApp).setCustomUserClaims(user.uid, { role });
-  uids[key] = user.uid;
-}
-
-async function signInAs(key) {
-  await signOut(auth);
-  await signInWithEmailAndPassword(auth, `${key}@campussafe.test`, PASSWORD);
-}
+const call = (asUid, role, data) => setUserRole.run({ auth: { uid: asUid, token: { role } }, data, rawRequest: {} });
 
 beforeAll(async () => {
-  adminApp = initializeAdminApp({ projectId: PROJECT_ID }, "admin");
-  await createUser("admin", "admin");
-  await createUser("student");
-  await createUser("other");
-
-  clientApp = initializeApp({ apiKey: "demo-key", projectId: PROJECT_ID }, "client");
-  auth = getAuth(clientApp);
-  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
-  const functions = getFunctions(clientApp, "asia-southeast1");
-  connectFunctionsEmulator(functions, "127.0.0.1", 5001);
-  setUserRole = httpsCallable(functions, "setUserRole");
-});
-
-afterAll(async () => {
-  await deleteApp(clientApp);
-  await deleteAdminApp(adminApp);
+  for (const key of ["admin", "student", "other"]) {
+    const email = `${key}-${Date.now()}@campussafe.test`;
+    uids[key] = (await getAuth().createUser({ email, password: "Passw0rd!" })).uid;
+  }
+  await getAuth().setCustomUserClaims(uids.admin, { role: "admin" });
 });
 
 describe("setUserRole", () => {
   test("an admin can promote a student to responder", async () => {
-    await signInAs("admin");
-    const result = await setUserRole({ uid: uids.student, role: "responder" });
-    expect(result.data).toEqual({ uid: uids.student, role: "responder" });
-
-    const user = await getAdminAuth(adminApp).getUser(uids.student);
-    expect(user.customClaims?.role).toBe("responder");
-    const profile = await getAdminFirestore(adminApp).doc(`users/${uids.student}`).get();
-    expect(profile.get("role")).toBe("responder");
+    const result = await call(uids.admin, "admin", { uid: uids.student, role: "responder" });
+    expect(result).toEqual({ uid: uids.student, role: "responder" });
+    expect((await getAuth().getUser(uids.student)).customClaims?.role).toBe("responder");
+    expect((await getFirestore().doc(`users/${uids.student}`).get()).get("role")).toBe("responder");
   });
 
   test("a non-admin cannot change roles", async () => {
-    await signInAs("other");
-    await expect(setUserRole({ uid: uids.other, role: "admin" })).rejects.toMatchObject({
-      code: "functions/permission-denied",
-    });
+    await expect(call(uids.other, undefined, { uid: uids.other, role: "admin" })).rejects.toMatchObject({ code: "permission-denied" });
   });
 
   test("invalid roles are rejected", async () => {
-    await signInAs("admin");
-    await expect(setUserRole({ uid: uids.other, role: "superuser" })).rejects.toMatchObject({
-      code: "functions/invalid-argument",
-    });
+    await expect(call(uids.admin, "admin", { uid: uids.other, role: "superuser" })).rejects.toMatchObject({ code: "invalid-argument" });
+  });
+
+  test("unknown users are rejected", async () => {
+    await expect(call(uids.admin, "admin", { uid: "nobody", role: "responder" })).rejects.toMatchObject({ code: "not-found" });
   });
 
   test("an admin cannot remove their own admin role", async () => {
-    await signInAs("admin");
-    await expect(setUserRole({ uid: uids.admin, role: "student" })).rejects.toMatchObject({
-      code: "functions/failed-precondition",
-    });
+    await expect(call(uids.admin, "admin", { uid: uids.admin, role: "student" })).rejects.toMatchObject({ code: "failed-precondition" });
   });
 });

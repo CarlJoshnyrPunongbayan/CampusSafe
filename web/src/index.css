@@ -1,13 +1,35 @@
 @import "tailwindcss";
 
+/* Design tokens copied from the CampusSafe mobile app (lib/theme/app_colors.dart)
+   so the dashboard and the app look like one product. */
 @theme {
-  --color-brand-50: #fef2f2;
-  --color-brand-100: #fee2e2;
-  --color-brand-500: #dc2626;
-  --color-brand-600: #b91c1c;
-  --color-brand-700: #991b1b;
+  --color-navy: #16315f;
+  --color-navy-dark: #0f2447;
+  --color-blue: #356cc8;
+  --color-soft-blue: #eaf1fc;
+  --color-background: #f7f8fa;
+  --color-ink: #182238;
+  --color-muted: #68748a;
+  --color-line: #e5e8ee;
+  --color-danger: #d94b50;
+  --color-warning: #e69b2d;
+  --color-success: #2a9d72;
+
+  --radius-card: 16px;
+  --radius-control: 13px;
+
+  --font-sans: "Roboto", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply bg-background text-ink antialiased;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
 }

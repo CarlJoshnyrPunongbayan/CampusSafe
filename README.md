@@ -13,11 +13,10 @@ Incident Reporting and Assistance, and Emergency Alert Mobile App: BSIT Capstone
 | Sprint | Scope | Status |
 |---|---|---|
 | 1 | Project setup, data model, security rules, roles, login in both apps | ✅ Done |
-| 2 | Incident reporting (GPS + photos), live dashboard queue, acknowledge → Pending/Responding/Resolved | ⏳ Next |
-| 3 | Cloud Functions: rule-based priority tagging, FCM notifications, escalation | |
-| 4 | SOS, call security, chat, broadcast alerts | |
-| 5 | QR location tags, offline report queue, responder mode | |
-| 6 | Users, incident types, analytics, measurement logging | |
+| — | **Admin web dashboard + backend** (all admin pages, priority tagging, escalation, notifications, analytics). See [docs/admin-dashboard.md](docs/admin-dashboard.md) | ✅ Done |
+| 2 | Mobile: incident reporting (GPS + photos), My Reports | ⏳ Next |
+| 4 | Mobile: SOS, call security, chat, alerts inbox, push notifications | |
+| 5 | Mobile: QR scanning, offline report queue, responder mode | |
 | 7 | Testing (Table XII), deployment, pilot | |
 
 ## Prerequisites
@@ -42,7 +41,7 @@ npm --prefix web install
 npm run emulators
 
 # 3. Terminal 2: load sample incident types, location tags and test accounts
-npm run seed
+npm run seed              # add  -- --demo  for sample incidents, users and alerts (for presentations)
 
 # 4. Terminal 3: web dashboard at http://localhost:5173
 npm --prefix web run dev
@@ -61,7 +60,7 @@ flutter run --dart-define=USE_EMULATOR=true
 | Responder | responder@campussafe.test | Respond123! | Mobile app |
 | Student | student@campussafe.test | Student123! | Mobile app |
 
-New accounts registered from the mobile app are always **students**. An admin promotes users to responder or admin with the `setUserRole` Cloud Function (the Users page in the dashboard comes in sprint 6).
+New accounts registered from the mobile app are always **students**. An admin promotes users to responder or admin on the dashboard's **Users** page.
 
 ## Tests
 
@@ -78,5 +77,7 @@ See [docs/firebase-setup.md](docs/firebase-setup.md) for the console steps: crea
 
 ## Documentation
 
+- [docs/admin-dashboard.md](docs/admin-dashboard.md): dashboard pages, Cloud Functions and evaluation measurements, mapped to the panel's requirements
+- [docs/mobile-integration.md](docs/mobile-integration.md): what the Flutter user app must read and write to work with the backend
 - [docs/data-model.md](docs/data-model.md): Firestore collections, roles and who can access what
 - [docs/firebase-setup.md](docs/firebase-setup.md): setting up the real Firebase project
