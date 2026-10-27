@@ -2,15 +2,18 @@
 //
 // Emulator (default):   npm run emulators   (in one terminal)
 //                       npm run seed        (in another)
+// With demo data:       npm run seed -- --demo   (emulator only: sample users, incidents, alerts)
 // Real project:         GOOGLE_APPLICATION_CREDENTIALS=key.json node scripts/seed.js --project <id> --production
 //                       In production only reference data and the first admin are created.
 
 import { initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
+import { seedDemoData } from "./demo-data.js";
 
 const args = process.argv.slice(2);
 const production = args.includes("--production");
+const demo = args.includes("--demo");
 const projectId = args.includes("--project") ? args[args.indexOf("--project") + 1] : "demo-campussafe";
 
 if (!production) {
@@ -66,6 +69,7 @@ async function upsertAccount({ email, password, name, mobileNo, role, studentId 
     { merge: true },
   );
   console.log(`  ${role.padEnd(9)} ${email}${production ? "" : `  /  ${password}`}`);
+  return user.uid;
 }
 
 async function main() {
@@ -87,7 +91,9 @@ async function main() {
       console.log("  Set ADMIN_EMAIL and ADMIN_PASSWORD to create the first admin account.");
     }
   } else {
-    for (const account of accounts) await upsertAccount(account);
+    const uids = [];
+    for (const account of accounts) uids.push(await upsertAccount(account));
+    if (demo) await seedDemoData({ db, auth, campus: CAMPUS, adminUid: uids[0] });
   }
   console.log("Done.");
 }

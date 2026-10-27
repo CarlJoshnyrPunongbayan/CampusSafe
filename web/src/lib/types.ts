@@ -49,9 +49,12 @@ export interface Incident {
   locationTagId: string | null
   status: IncidentStatus
   priority?: Priority
+  priorityReason?: string
   priorityConfirmed?: boolean
   assignedResponderId?: string | null
   escalated?: boolean
+  escalatedAt?: Timestamp
+  updatedBy?: string
   clientCreatedAt: Timestamp
   createdAt: Timestamp
   acknowledgedAt?: Timestamp
@@ -63,6 +66,20 @@ export interface ChatMessage {
   senderId: string
   text: string
   sentAt: Timestamp
+}
+
+export interface ActivityLog {
+  actorId: string
+  action: string
+  from?: string | null
+  to?: string | null
+  note?: string
+  at: Timestamp
+}
+
+export interface AppConfig {
+  securityHotline?: string
+  escalationMinutes?: number
 }
 
 export interface Alert {

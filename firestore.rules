@@ -107,12 +107,15 @@ service cloud.firestore {
 
       // Admins (security office) manage the whole incident lifecycle.
       // Assigned responders may only move the status forward.
-      allow update: if (isAdmin()
-          && !changed().hasAny(['reporterId', 'createdAt', 'clientCreatedAt'])
-          && request.resource.data.status in ['Pending', 'Responding', 'Resolved'])
-        || (isAssignedResponder()
-          && changed().hasOnly(['status', 'respondingAt', 'resolvedAt'])
-          && request.resource.data.status in ['Responding', 'Resolved']);
+      // Every update records updatedBy so the activity log knows who made the change.
+      allow update: if request.resource.data.updatedBy == request.auth.uid
+        && ((isAdmin()
+            && !changed().hasAny(['reporterId', 'createdAt', 'clientCreatedAt', 'priorityReason', 'escalatedAt'])
+            && request.resource.data.status in ['Pending', 'Responding', 'Resolved']
+            && request.resource.data.get('priority', 'Medium') in ['High', 'Medium', 'Low'])
+          || (isAssignedResponder()
+            && changed().hasOnly(['status', 'respondingAt', 'resolvedAt', 'updatedBy'])
+            && request.resource.data.status in ['Responding', 'Resolved']));
 
       allow delete: if false;
 

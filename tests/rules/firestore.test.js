@@ -182,10 +182,10 @@ describe("incidents", () => {
   });
 
   test("the assigned responder can only move the status forward", async () => {
-    await assertSucceeds(updateDoc(doc(responder(), "incidents/inc1"), { status: "Responding", respondingAt: serverTimestamp() }));
-    await assertFails(updateDoc(doc(responder(), "incidents/inc1"), { priority: "Low" }));
-    await assertFails(updateDoc(doc(responder(), "incidents/inc1"), { status: "Pending" }));
-    await assertFails(updateDoc(doc(otherResponder(), "incidents/inc1"), { status: "Responding" }));
+    await assertSucceeds(updateDoc(doc(responder(), "incidents/inc1"), { status: "Responding", respondingAt: serverTimestamp(), updatedBy: "resp1" }));
+    await assertFails(updateDoc(doc(responder(), "incidents/inc1"), { priority: "Low", updatedBy: "resp1" }));
+    await assertFails(updateDoc(doc(responder(), "incidents/inc1"), { status: "Pending", updatedBy: "resp1" }));
+    await assertFails(updateDoc(doc(otherResponder(), "incidents/inc1"), { status: "Responding", updatedBy: "resp2" }));
   });
 
   test("admins can acknowledge, assign and change priority", async () => {
@@ -194,12 +194,24 @@ describe("incidents", () => {
       assignedResponderId: "resp2",
       priority: "Medium",
       priorityConfirmed: true,
+      updatedBy: "admin1",
     }));
   });
 
+  test("staff updates must record who made them", async () => {
+    await assertFails(updateDoc(doc(admin(), "incidents/inc1"), { status: "Responding" }));
+    await assertFails(updateDoc(doc(admin(), "incidents/inc1"), { status: "Responding", updatedBy: "someone-else" }));
+    await assertSucceeds(updateDoc(doc(admin(), "incidents/inc1"), { status: "Responding", updatedBy: "admin1" }));
+  });
+
+  test("admins cannot set an invalid priority or overwrite system fields", async () => {
+    await assertFails(updateDoc(doc(admin(), "incidents/inc1"), { priority: "Critical", updatedBy: "admin1" }));
+    await assertFails(updateDoc(doc(admin(), "incidents/inc1"), { priorityReason: "x", updatedBy: "admin1" }));
+  });
+
   test("admins cannot rewrite who reported an incident or use an invalid status", async () => {
-    await assertFails(updateDoc(doc(admin(), "incidents/inc1"), { reporterId: "stud2" }));
-    await assertFails(updateDoc(doc(admin(), "incidents/inc1"), { status: "Closed" }));
+    await assertFails(updateDoc(doc(admin(), "incidents/inc1"), { reporterId: "stud2", updatedBy: "admin1" }));
+    await assertFails(updateDoc(doc(admin(), "incidents/inc1"), { status: "Closed", updatedBy: "admin1" }));
   });
 });
 

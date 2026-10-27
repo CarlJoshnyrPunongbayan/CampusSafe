@@ -5,9 +5,18 @@ import { AuthProvider } from './auth/AuthProvider'
 import { RequireAdmin } from './auth/RequireAdmin'
 import './index.css'
 import { DashboardLayout } from './layout/DashboardLayout'
-import { ComingSoonPage } from './pages/ComingSoonPage'
+import { AlertsPage } from './pages/AlertsPage'
+import { CampusMapPage } from './pages/CampusMapPage'
+import { IncidentDetailPage } from './pages/IncidentDetailPage'
+import { IncidentQueuePage } from './pages/IncidentQueuePage'
+import { IncidentTypesPage } from './pages/IncidentTypesPage'
+import { LazyAnalyticsPage, LazyLocationTagsPage } from './pages/lazyPages'
 import { LoginPage } from './pages/LoginPage'
+import { MorePage } from './pages/MorePage'
 import { OverviewPage } from './pages/OverviewPage'
+import { ProfilePage } from './pages/ProfilePage'
+import { SettingsPage } from './pages/SettingsPage'
+import { UsersPage } from './pages/UsersPage'
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -18,12 +27,17 @@ const router = createBrowserRouter([
         element: <DashboardLayout />,
         children: [
           { index: true, element: <OverviewPage /> },
-          { path: 'incidents', element: <ComingSoonPage title="Incident Queue" step="sprint 2" /> },
-          { path: 'alerts', element: <ComingSoonPage title="Broadcast Alerts" step="sprint 4" /> },
-          { path: 'users', element: <ComingSoonPage title="Users" step="sprint 6" /> },
-          { path: 'incident-types', element: <ComingSoonPage title="Incident Types" step="sprint 6" /> },
-          { path: 'location-tags', element: <ComingSoonPage title="Location Tags" step="sprint 5" /> },
-          { path: 'analytics', element: <ComingSoonPage title="Analytics" step="sprint 6" /> },
+          { path: 'incidents', element: <IncidentQueuePage /> },
+          { path: 'incidents/:id', element: <IncidentDetailPage /> },
+          { path: 'alerts', element: <AlertsPage /> },
+          { path: 'map', element: <CampusMapPage /> },
+          { path: 'profile', element: <ProfilePage /> },
+          { path: 'more', element: <MorePage /> },
+          { path: 'analytics', element: <LazyAnalyticsPage /> },
+          { path: 'users', element: <UsersPage /> },
+          { path: 'incident-types', element: <IncidentTypesPage /> },
+          { path: 'location-tags', element: <LazyLocationTagsPage /> },
+          { path: 'settings', element: <SettingsPage /> },
         ],
       },
     ],
