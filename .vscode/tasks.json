@@ -1,0 +1,49 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Install dependencies",
+      "type": "shell",
+      "command": "npm run setup",
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Firebase emulators",
+      "type": "shell",
+      "command": "npm run emulators",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "firebase",
+        "pattern": { "regexp": "^__never_matches__$" },
+        "background": { "activesBegin": "Starting emulators", "beginsPattern": "Starting emulators", "endsPattern": "All emulators ready" }
+      },
+      "presentation": { "panel": "dedicated", "group": "campussafe" }
+    },
+    {
+      "label": "Load demo data",
+      "type": "shell",
+      "command": "npm run seed:demo",
+      "problemMatcher": [],
+      "presentation": { "panel": "dedicated", "group": "campussafe" }
+    },
+    {
+      "label": "Start web dashboard",
+      "type": "shell",
+      "command": "npm run web",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": { "regexp": "^__never_matches__$" },
+        "background": { "beginsPattern": "VITE", "endsPattern": "Local:" }
+      },
+      "presentation": { "panel": "dedicated", "group": "campussafe" }
+    },
+    {
+      "label": "Start CampusSafe (emulators + demo data + dashboard)",
+      "dependsOrder": "sequence",
+      "dependsOn": ["Start Firebase emulators", "Load demo data", "Start web dashboard"],
+      "problemMatcher": [],
+      "group": { "kind": "build", "isDefault": true }
+    }
+  ]
+}

@@ -3,8 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "emulators": "npm --prefix functions run build && firebase emulators:start --project demo-campussafe --import emulator-data --export-on-exit emulator-data",
+    "setup": "npm install && npm --prefix functions install && npm --prefix web install",
+    "emulators": "npm --prefix functions run build && node scripts/emulators.js",
     "seed": "node scripts/seed.js",
+    "seed:demo": "node scripts/seed.js --demo",
+    "web": "npm --prefix web run dev",
     "test:rules": "firebase emulators:exec --only firestore,storage --project demo-campussafe \"vitest run\"",
     "test:functions": "npm --prefix functions run build && firebase emulators:exec --only auth,firestore --project demo-campussafe \"vitest run --config tests/vitest.functions.config.js\""
   },
